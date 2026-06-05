@@ -1,4 +1,5 @@
 using ContentTower.Services;
+using ContentTower.System;
 using Microsoft.Extensions.Options;
 
 namespace ContentTower
@@ -26,15 +27,18 @@ namespace ContentTower
         private static WebApplication BuildApp(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            // System abstraction modules:
+            builder.Services.AddSingleton<ITime, Time>();
+            builder.Services.AddSingleton<IFileSystem, FileSystem>();
+            // Services:
             builder.Services.AddSingleton<ICleanupService, CleanupService>();
-            builder.Services.AddSingleton<IFileSystemService, FileSystemService>();
             builder.Services.AddSingleton<IHashService, HashService>();
             builder.Services.AddSingleton<ILoadService, LoadService>();
             builder.Services.AddSingleton<IPresenceService, PresenceService>();
             builder.Services.AddSingleton<IQuotaService, QuotaService>();
             builder.Services.AddSingleton<ISaveService, SaveService>();
-            builder.Services.AddSingleton<ITimeService, TimeService>();
             builder.Services.AddSingleton<IValidationService, ValidationService>();
+            // WebAPI:
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
             builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));

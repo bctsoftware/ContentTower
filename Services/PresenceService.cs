@@ -1,4 +1,6 @@
-﻿namespace ContentTower.Services
+﻿using ContentTower.System;
+
+namespace ContentTower.Services
 {
     public interface IPresenceService
     {
@@ -11,9 +13,9 @@
     {
         private readonly HashSet<string> exists = new HashSet<string>();
         private readonly HashSet<string> doesntExist = new HashSet<string>();
-        private readonly IFileSystemService fs;
+        private readonly IFileSystem fs;
 
-        public PresenceService(IFileSystemService fs)
+        public PresenceService(IFileSystem fs)
         {
             this.fs = fs;
         }

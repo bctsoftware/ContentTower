@@ -1,4 +1,5 @@
 ﻿using ContentTower.Controllers;
+using ContentTower.System;
 using Microsoft.Extensions.Options;
 
 namespace ContentTower.Services
@@ -15,16 +16,16 @@ namespace ContentTower.Services
         private readonly TimeSpan longSleep = TimeSpan.FromMinutes(10);
         private readonly ILogger<CleanupService> logger;
         private readonly StorageOptions options;
-        private readonly IFileSystemService fs;
+        private readonly IFileSystem fs;
         private readonly IPresenceService presenceService;
         private readonly IQuotaService quotaService;
-        private readonly ITimeService timeService;
-        private readonly CancellationTokenSource cts = new CancellationTokenSource();
+        private readonly ITime timeService;
         private readonly List<FileMetadata> queue = new List<FileMetadata>();
         private readonly Dictionary<QuotaState, Dictionary<StoreRequestType, Func<TimeSpan>>> timespanSelectors = new();
+        private CancellationTokenSource cts = new CancellationTokenSource();
         private Task worker = Task.CompletedTask;
 
-        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IFileSystemService fs, IPresenceService presenceService, IQuotaService quotaService, ITimeService timeService)
+        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IFileSystem fs, IPresenceService presenceService, IQuotaService quotaService, ITime timeService)
         {
             this.logger = logger;
             this.options = options.Value;
@@ -120,6 +121,7 @@ namespace ContentTower.Services
                 await fs.DeleteData(item.Cid);
                 await fs.DeleteObject(item.Cid);
                 presenceService.ClearPresence(item.Cid);
+                quotaService.RemoveUsedBytes(item.Length);
                 logger.LogTrace("Successfully cleaned up {0}.", item.Cid);
             }
             catch (Exception ex)

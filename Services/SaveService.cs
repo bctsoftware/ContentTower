@@ -1,4 +1,5 @@
 ﻿using ContentTower.Controllers;
+using ContentTower.System;
 
 namespace ContentTower.Services
 {
@@ -10,13 +11,13 @@ namespace ContentTower.Services
     public class SaveService : ISaveService
     {
         private readonly ILogger<SaveService> logger;
-        private readonly IFileSystemService fs;
+        private readonly IFileSystem fs;
         private readonly IHashService hashService;
         private readonly IPresenceService presenceService;
         private readonly IQuotaService quotaService;
-        private readonly ITimeService timeService;
+        private readonly ITime timeService;
 
-        public SaveService(ILogger<SaveService> logger, IFileSystemService fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService, ITimeService timeService)
+        public SaveService(ILogger<SaveService> logger, IFileSystem fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService, ITime timeService)
         {
             this.logger = logger;
             this.fs = fs;

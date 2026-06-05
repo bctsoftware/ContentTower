@@ -1,11 +1,11 @@
-﻿namespace ContentTower.Services
+﻿namespace ContentTower.System
 {
-    public interface ITimeService
+    public interface ITime
     {
         DateTime UtcNow();
     }
 
-    public class TimeService : ITimeService
+    public class Time : ITime
     {
         public DateTime UtcNow()
         {

@@ -1,4 +1,5 @@
 ﻿using ContentTower.Controllers;
+using ContentTower.System;
 using Microsoft.Extensions.Options;
 
 namespace ContentTower.Services
@@ -16,11 +17,11 @@ namespace ContentTower.Services
     {
         private readonly QuotaResponse status = new QuotaResponse();
         private readonly IOptions<StorageOptions> options;
-        private readonly IFileSystemService fs;
+        private readonly IFileSystem fs;
         private readonly ILogger<QuotaService> logger;
         private long nominalLimit = 0;
 
-        public QuotaService(ILogger<QuotaService> logger, IOptions<StorageOptions> options, IFileSystemService fs)
+        public QuotaService(ILogger<QuotaService> logger, IOptions<StorageOptions> options, IFileSystem fs)
         {
             this.logger = logger;
             this.options = options;
@@ -74,10 +75,25 @@ namespace ContentTower.Services
 
         private void UpdateState()
         {
-            a
-            if (status.Used > status.Quota) status.State = QuotaState.Full;
-            else if (status.Used > nominalLimit) status.State = QuotaState.Pressure;
-            else status.State = QuotaState.Nominal;
+            var newState = GetNewState();
+
+            if (newState == QuotaState.Pressure && status.State == QuotaState.Nominal)
+            {
+                logger.LogWarning("ContentTower storage reaches pressure level. Cleaning up of old data will speed up.");
+            }
+            else if (newState == QuotaState.Nominal && status.State != QuotaState.Nominal)
+            {
+                logger.LogWarning("ContentTower storage pressure resolved. Cleaning speed reduced to normal.");
+            }
+
+            status.State = newState;
+        }
+
+        private QuotaState GetNewState()
+        {
+            if (status.Used > status.Quota) return QuotaState.Full;
+            if (status.Used > nominalLimit) return QuotaState.Pressure;
+            return QuotaState.Nominal;
         }
 
         private void CountUpUsedBytes(FileMetadata metadata)

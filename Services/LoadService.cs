@@ -1,4 +1,6 @@
-﻿namespace ContentTower.Services
+﻿using ContentTower.System;
+
+namespace ContentTower.Services
 {
     public interface ILoadService
     {
@@ -8,9 +10,9 @@
 
     public class LoadService : ILoadService
     {
-        private readonly IFileSystemService fs;
+        private readonly IFileSystem fs;
 
-        public LoadService(IFileSystemService fs)
+        public LoadService(IFileSystem fs)
         {
             this.fs = fs;
         }
