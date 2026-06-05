@@ -74,6 +74,7 @@ namespace ContentTower.Services
 
         private void UpdateState()
         {
+            a
             if (status.Used > status.Quota) status.State = QuotaState.Full;
             else if (status.Used > nominalLimit) status.State = QuotaState.Pressure;
             else status.State = QuotaState.Nominal;

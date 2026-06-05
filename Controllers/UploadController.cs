@@ -38,13 +38,6 @@ namespace ContentTower.Controllers
         public byte[] Data { get; set; } = Array.Empty<byte>();
     }
 
-    public enum StoreRequestType
-    {
-        Default,
-        TemporaryFile,
-        PermanentFile
-    }
-
     public class UploadResponse
     {
         public string ContentId { get; set; } = string.Empty;

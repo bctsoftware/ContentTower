@@ -14,14 +14,16 @@ namespace ContentTower.Services
         private readonly IHashService hashService;
         private readonly IPresenceService presenceService;
         private readonly IQuotaService quotaService;
+        private readonly ITimeService timeService;
 
-        public SaveService(ILogger<SaveService> logger, IFileSystemService fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService)
+        public SaveService(ILogger<SaveService> logger, IFileSystemService fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService, ITimeService timeService)
         {
             this.logger = logger;
             this.fs = fs;
             this.hashService = hashService;
             this.presenceService = presenceService;
             this.quotaService = quotaService;
+            this.timeService = timeService;
         }
 
         public async Task<Cid> Handle(UploadRequest request)
@@ -36,11 +38,13 @@ namespace ContentTower.Services
 
             var metadata = new FileMetadata
             {
+                Cid = cid,
                 Name = request.Name,
                 ContentType = request.ContentType,
                 Length = request.Data.Length,
-                UploadUtc = DateTime.UtcNow,
-                LastActivityUtc = DateTime.UtcNow,
+                StoreType = request.StoreType,
+                UploadUtc = timeService.UtcNow(),
+                LastActivityUtc = timeService.UtcNow(),
             };
             await fs.WriteObject(cid, metadata);
 

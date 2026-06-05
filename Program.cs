@@ -5,11 +5,12 @@ namespace ContentTower
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var app = BuildApp(args);
 
             InitializeOptions(app);
+            await InitializeServices(app);
 
             if (app.Environment.IsDevelopment())
             {
@@ -30,10 +31,16 @@ namespace ContentTower
             return builder.Build();
         }
 
+        private static async Task InitializeServices(WebApplication app)
+        {
+            await Get<IQuotaService>(app).Initialize();
+            await Get<ICleanupService>(app).Start();
+        }
+
         private static void InitializeOptions(WebApplication app)
         {
-            var logger = app.Services.GetService<ILogger<Program>>()!;
-            var optionsMaybe = app.Services.GetService<IOptions<StorageOptions>>();
+            var logger = Get<ILogger<Program>>(app);
+            var optionsMaybe = Get<IOptions<StorageOptions>>(app);
             if (optionsMaybe == null || optionsMaybe.Value == null)
                 throw new Exception("Failed to load configuration options.");
 
@@ -46,7 +53,12 @@ namespace ContentTower
             logger.LogInformation($"StoreDurationTemporaryNominal={Utils.FormatDuration(options.StoreDurationTemporaryNominal)}");
             logger.LogInformation($"StoreDurationTemporaryPressure={Utils.FormatDuration(options.StoreDurationTemporaryPressure)}");
 
-            app.Services.GetService<IValidationService>()!.ValidateOptions();
+            Get<IValidationService>(app).ValidateOptions();
+        }
+
+        private static T Get<T>(WebApplication app)
+        {
+            return app.Services.GetService<T>()!;
         }
     }
 }
