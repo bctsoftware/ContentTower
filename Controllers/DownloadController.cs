@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using ContentTower.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 
 namespace ContentTower.Controllers
@@ -7,19 +8,45 @@ namespace ContentTower.Controllers
     [Route("[controller]")]
     public class DownloadController : ControllerBase
     {
-        [HttpGet]
-        public async Task<FileStreamResult> Download(DownloadRequest request)
+        private readonly IPresenceService presenceService;
+        private readonly ILoadService loadService;
+
+        public DownloadController(IPresenceService presenceService, ILoadService loadService)
         {
-            var stream = new MemoryStream();
-            return new FileStreamResult(stream, new MediaTypeHeaderValue("text/plain"))
+            this.presenceService = presenceService;
+            this.loadService = loadService;
+        }
+
+        [HttpGet]
+        [Route("get/{cid}")]
+        public async Task<IActionResult> Download([FromRoute] string cid)
+        {
+            if (!IsValid(cid)) return BadRequest("Invalid CID");
+            var contentId = new Cid(cid);
+            if (!presenceService.IsPresent(contentId)) return NotFound();
+
+            var metadata = await loadService.ReadMetadata(contentId);
+            var stream = await loadService.ReadData(contentId);
+            return new FileStreamResult(stream, new MediaTypeHeaderValue(metadata.ContentType))
             {
-                FileDownloadName = "test.txt"
+                FileDownloadName = metadata.Name
             };
         }
-    }
 
-    public class DownloadRequest
-    {
-        public string ContentId { get; set; } = string.Empty;
+        [HttpGet]
+        [Route("check/{cid}")]
+        public async Task<IActionResult> Check([FromRoute] string cid)
+        {
+            if (!IsValid(cid)) return BadRequest("Invalid CID");
+
+            var contentId = new Cid(cid);
+            if (!presenceService.IsPresent(contentId)) return NotFound();
+            return Ok();
+        }
+
+        private static bool IsValid(string cid)
+        {
+            return cid.StartsWith(HashService.CidPrefix);
+        }
     }
 }

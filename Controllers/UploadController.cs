@@ -1,3 +1,4 @@
+using ContentTower.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ContentTower.Controllers
@@ -6,12 +7,22 @@ namespace ContentTower.Controllers
     [Route("[controller]")]
     public class UploadController : ControllerBase
     {
+        private readonly ISaveService saveService;
+
+        public UploadController(ISaveService saveService)
+        {
+            this.saveService = saveService;
+        }
+
         [HttpPost]
         [RequestSizeLimit(long.MaxValue)]
         public async Task<UploadResponse> Upload(UploadRequest request)
         {
-            await Task.CompletedTask;
-            return new UploadResponse();
+            var cid = await saveService.Handle(request);
+            return new UploadResponse
+            {
+                ContentId = cid.Hash
+            };
         }
     }
 
@@ -32,7 +43,6 @@ namespace ContentTower.Controllers
 
     public class UploadResponse
     {
-        public long BytesStored { get; set; }
         public string ContentId { get; set; } = string.Empty;
     }
 }

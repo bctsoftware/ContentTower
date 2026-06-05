@@ -1,4 +1,4 @@
-
+using ContentTower.Services;
 using Microsoft.Extensions.Options;
 
 namespace ContentTower
@@ -15,7 +15,6 @@ namespace ContentTower
             {
                 app.MapOpenApi();
             }
-
             app.UseAuthorization();
             app.MapControllers();
             app.Run();

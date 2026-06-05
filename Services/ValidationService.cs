@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 
-namespace ContentTower
+namespace ContentTower.Services
 {
     public interface IValidationService
     {
