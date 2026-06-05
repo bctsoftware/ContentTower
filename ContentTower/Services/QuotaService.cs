@@ -34,7 +34,7 @@ namespace ContentTower.Services
 
             status.Quota = options.Value.Quota;
             status.Used = 0;
-            status.State = QuotaState.Full;
+            status.State = QuotaState.Nominal;
 
             double q = status.Quota;
             nominalLimit = Convert.ToInt64(q * 0.8);
