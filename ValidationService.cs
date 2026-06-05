@@ -1,0 +1,46 @@
+﻿using Microsoft.Extensions.Options;
+
+namespace ContentTower
+{
+    public interface IValidationService
+    {
+        void ValidateOptions();
+    }
+
+    public class ValidationService : IValidationService
+    {
+        private const int MinTimespanSeconds = 3600 * 1;
+        private readonly StorageOptions options;
+
+        public ValidationService(IOptions<StorageOptions> options)
+        {
+            this.options = options.Value;
+        }
+
+        public void ValidateOptions()
+        {
+            var faults = new List<string>();
+            if (string.IsNullOrEmpty(options.DataPath)) faults.Add("DataPath not provided.");
+            if (!Directory.Exists(options.DataPath))
+            {
+                Directory.CreateDirectory(options.DataPath);
+                if (!Directory.Exists(options.DataPath)) faults.Add("Unable to create DataPath");
+            }
+            if (options.Quota < 1024 * 1024) faults.Add("Quota must be at least 1 MB (1048576)");
+            ValidateTimespan(faults, options.StoreDurationDefaultNominal, nameof(StorageOptions.StoreDurationDefaultNominal));
+            ValidateTimespan(faults, options.StoreDurationDefaultPressure, nameof(StorageOptions.StoreDurationDefaultPressure));
+            ValidateTimespan(faults, options.StoreDurationTemporaryNominal, nameof(StorageOptions.StoreDurationTemporaryNominal));
+            ValidateTimespan(faults, options.StoreDurationTemporaryPressure, nameof(StorageOptions.StoreDurationTemporaryPressure));
+
+            if (faults.Any())
+            {
+                throw new Exception($"Invalid configuration: {string.Join(", ", faults)}");
+            }
+        }
+
+        private static void ValidateTimespan(List<string> faults, TimeSpan t, string name)
+        {
+            if (t.TotalSeconds < MinTimespanSeconds) faults.Add($"Timespan for {name} is too short. Must be at least {MinTimespanSeconds} seconds.");
+        }
+    }
+}

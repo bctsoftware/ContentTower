@@ -1,0 +1,28 @@
+services:
+  contenttower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contenttower
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      
+      Storage__Quota: "1073741824"  # 1 GB in bytes
+      Storage__DataPath: "/app/data"
+      Storage__StoreDurationDefaultNominalSeconds: "2592000"
+      Storage__StoreDurationDefaultPressureSeconds: "1296000"
+      Storage__StoreDurationTemporaryNominalSeconds: "86400"
+      Storage__StoreDurationTemporaryPressureSeconds: "10800"
+
+      Logging__LogLevel__Default: Information
+      Logging__LogLevel__Microsoft.AspNetCore: Warning
+    volumes:
+      - contenttower_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  contenttower_data:
+    driver: local
