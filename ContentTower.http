@@ -1,0 +1,18 @@
+@ContentTower_HostAddress = http://localhost:5135
+
+POST {{ContentTower_HostAddress}}/upload
+Content-Type: application/json
+
+{
+  //UploadRequest
+}
+
+###
+
+GET {{ContentTower_HostAddress}}/download
+
+###
+
+GET {{ContentTower_HostAddress}}/quota
+
+###
