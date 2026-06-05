@@ -13,13 +13,15 @@ namespace ContentTower.Services
         private readonly IFileSystemService fs;
         private readonly IHashService hashService;
         private readonly IPresenceService presenceService;
+        private readonly IQuotaService quotaService;
 
-        public SaveService(ILogger<SaveService> logger, IFileSystemService fs, IHashService hashService, IPresenceService presenceService)
+        public SaveService(ILogger<SaveService> logger, IFileSystemService fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService)
         {
             this.logger = logger;
             this.fs = fs;
             this.hashService = hashService;
             this.presenceService = presenceService;
+            this.quotaService = quotaService;
         }
 
         public async Task<Cid> Handle(UploadRequest request)
@@ -47,6 +49,7 @@ namespace ContentTower.Services
                 await fs.WriteData(cid, request.Data);
                 logger.LogInformation("Saved new content for {0}.", cid);
                 presenceService.SetPresence(cid);
+                quotaService.AddUsedBytes(request.Data.Length);
                 return cid;
             }
             catch (Exception ex)

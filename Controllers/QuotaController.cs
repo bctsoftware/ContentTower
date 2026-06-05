@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using ContentTower.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ContentTower.Controllers
 {
@@ -6,10 +7,17 @@ namespace ContentTower.Controllers
     [Route("[controller]")]
     public class QuotaController : ControllerBase
     {
+        private readonly IQuotaService quotaService;
+
+        public QuotaController(IQuotaService quotaService)
+        {
+            this.quotaService = quotaService;
+        }
+
         [HttpGet]
         public async Task<QuotaResponse> Get()
         {
-            return new QuotaResponse();
+            return quotaService.GetQuotaStatus();
         }
     }
 

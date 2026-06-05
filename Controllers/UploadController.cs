@@ -8,21 +8,25 @@ namespace ContentTower.Controllers
     public class UploadController : ControllerBase
     {
         private readonly ISaveService saveService;
+        private readonly IQuotaService quotaService;
 
-        public UploadController(ISaveService saveService)
+        public UploadController(ISaveService saveService, IQuotaService quotaService)
         {
             this.saveService = saveService;
+            this.quotaService = quotaService;
         }
 
         [HttpPost]
         [RequestSizeLimit(long.MaxValue)]
-        public async Task<UploadResponse> Upload(UploadRequest request)
+        public async Task<IActionResult> Upload(UploadRequest request)
         {
+            if (quotaService.IsFull()) return BadRequest("Storage quota is full.");
+
             var cid = await saveService.Handle(request);
-            return new UploadResponse
+            return Ok(new UploadResponse
             {
                 ContentId = cid.Hash
-            };
+            });
         }
     }
 

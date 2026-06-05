@@ -8,6 +8,7 @@
         Task<Stream> ReadData(Cid cid);
         Task DeleteObject(Cid cid);
         Task DeleteData(Cid cid);
+        Task IterateObjects<T>(Action<T> onObject);
     }
 
     public class FileSystemService : IFileSystemService
