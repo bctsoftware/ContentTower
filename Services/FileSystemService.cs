@@ -9,6 +9,7 @@
         Task DeleteObject(Cid cid);
         Task DeleteData(Cid cid);
         Task IterateObjects<T>(Action<T> onObject);
+        bool Exists(Cid cid);
     }
 
     public class FileSystemService : IFileSystemService

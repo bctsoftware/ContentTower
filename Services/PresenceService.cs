@@ -9,19 +9,51 @@
 
     public class PresenceService : IPresenceService
     {
+        private readonly HashSet<string> exists = new HashSet<string>();
+        private readonly HashSet<string> doesntExist = new HashSet<string>();
+        private readonly IFileSystemService fs;
+
+        public PresenceService(IFileSystemService fs)
+        {
+            this.fs = fs;
+        }
+
         public bool IsPresent(Cid cid)
         {
-            throw new NotImplementedException();
+            if (exists.Contains(cid.Hash)) return true;
+            if (ExistsOnFs(cid))
+            {
+                exists.Add(cid.Hash);
+                return true;
+            }
+            return false;
         }
 
         public void ClearPresence(Cid cid)
         {
-            throw new NotImplementedException();
+            doesntExist.Add(cid.Hash);
+            exists.Remove(cid.Hash);
+
+            CheckCaches();
         }
 
         public void SetPresence(Cid cid)
         {
-            throw new NotImplementedException();
+            exists.Add(cid.Hash);
+            doesntExist.Remove(cid.Hash);
+
+            CheckCaches();
+        }
+
+        private bool ExistsOnFs(Cid cid)
+        {
+            return fs.Exists(cid);
+        }
+
+        private void CheckCaches()
+        {
+            if (exists.Count > 100000) exists.Clear();
+            if (doesntExist.Count > 100000) doesntExist.Clear();
         }
     }
 }

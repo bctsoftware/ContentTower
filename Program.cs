@@ -19,12 +19,22 @@ namespace ContentTower
             app.UseAuthorization();
             app.MapControllers();
             app.Run();
+
+            await Get<ICleanupService>(app).Stop();
         }
 
         private static WebApplication BuildApp(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            builder.Services.AddTransient<IValidationService, ValidationService>();
+            builder.Services.AddSingleton<ICleanupService, CleanupService>();
+            builder.Services.AddSingleton<IFileSystemService, FileSystemService>();
+            builder.Services.AddSingleton<IHashService, HashService>();
+            builder.Services.AddSingleton<ILoadService, LoadService>();
+            builder.Services.AddSingleton<IPresenceService, PresenceService>();
+            builder.Services.AddSingleton<IQuotaService, QuotaService>();
+            builder.Services.AddSingleton<ISaveService, SaveService>();
+            builder.Services.AddSingleton<ITimeService, TimeService>();
+            builder.Services.AddSingleton<IValidationService, ValidationService>();
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
             builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));

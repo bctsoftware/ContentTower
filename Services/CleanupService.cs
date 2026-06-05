@@ -16,6 +16,7 @@ namespace ContentTower.Services
         private readonly ILogger<CleanupService> logger;
         private readonly StorageOptions options;
         private readonly IFileSystemService fs;
+        private readonly IPresenceService presenceService;
         private readonly IQuotaService quotaService;
         private readonly ITimeService timeService;
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
@@ -23,11 +24,12 @@ namespace ContentTower.Services
         private readonly Dictionary<QuotaState, Dictionary<StoreRequestType, Func<TimeSpan>>> timespanSelectors = new();
         private Task worker = Task.CompletedTask;
 
-        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IFileSystemService fs, IQuotaService quotaService, ITimeService timeService)
+        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IFileSystemService fs, IPresenceService presenceService, IQuotaService quotaService, ITimeService timeService)
         {
             this.logger = logger;
             this.options = options.Value;
             this.fs = fs;
+            this.presenceService = presenceService;
             this.quotaService = quotaService;
             this.timeService = timeService;
             CreateTimespanSelectors();
@@ -117,6 +119,8 @@ namespace ContentTower.Services
             {
                 await fs.DeleteData(item.Cid);
                 await fs.DeleteObject(item.Cid);
+                presenceService.ClearPresence(item.Cid);
+                logger.LogTrace("Successfully cleaned up {0}.", item.Cid);
             }
             catch (Exception ex)
             {
