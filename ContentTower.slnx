@@ -1,3 +1,4 @@
 <Solution>
-  <Project Path="ContentTower.csproj" />
+  <Project Path="ContentTower.Tests/ContentTower.Tests.csproj" Id="a9de2069-dbe0-4cb9-bdf9-04a759b050b9" />
+  <Project Path="ContentTower/ContentTower.csproj" />
 </Solution>
