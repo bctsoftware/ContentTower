@@ -48,6 +48,7 @@ public class CleanupWorkerTests
         {
             DataPath = "/data",
             Quota = 1000000,
+            CleanupIntervalSeconds = 600,
             StoreDurationDefaultNominalSeconds = 86400,      // 1 day
             StoreDurationDefaultPressureSeconds = 43200,     // 12 hours
             StoreDurationTemporaryNominalSeconds = 7200,     // 2 hours
@@ -117,30 +118,12 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
         mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
         mockPresenceService.Verify(ps => ps.ClearPresence(It.IsAny<Cid>()), Times.Never);
         mockQuotaService.Verify(qs => qs.RemoveUsedBytes(It.IsAny<long>()), Times.Never);
-    }
-
-    [Test]
-    public async Task ProcessItem_WithPermanentFile_StillSleeps()
-    {
-        var worker = CreateCleanupWorker();
-        var file = CreateTestFile(storeType: StoreRequestType.PermanentFile);
-        SetupTimeService(DateTime.UtcNow);
-        SetupQuotaService(QuotaState.Nominal);
-        var sleepCalled = false;
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback(() => sleepCalled = true)
-            .Returns(Task.CompletedTask);
-
-        await worker.ProcessItem(file, CancellationToken.None);
-
-        await Assert.That(sleepCalled).IsTrue();
     }
 
     #endregion
@@ -159,7 +142,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
         mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
@@ -177,7 +160,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
         mockFileSystem.Verify(fs => fs.DeleteObject(file.Cid), Times.Once);
@@ -201,7 +184,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
         mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
@@ -219,7 +202,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
         mockFileSystem.Verify(fs => fs.DeleteObject(file.Cid), Times.Once);
@@ -241,7 +224,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Pressure);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
     }
@@ -258,7 +241,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Pressure);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
     }
@@ -279,7 +262,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Pressure);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
     }
@@ -296,7 +279,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Pressure);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
     }
@@ -317,7 +300,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Full);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
     }
@@ -334,7 +317,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Full);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
     }
@@ -355,7 +338,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Full);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
     }
@@ -372,71 +355,9 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Full);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
-    }
-
-    #endregion
-
-    #region Tests - ProcessItem - Sleep Behavior
-
-    [Test]
-    public async Task ProcessItem_AlwaysSleepsAfterProcessing()
-    {
-        var worker = CreateCleanupWorker();
-        var file = CreateTestFile(storeType: StoreRequestType.Default);
-        SetupTimeService(DateTime.UtcNow);
-        SetupQuotaService(QuotaState.Nominal);
-        SetupFileDeletion();
-        var sleepCalled = false;
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback(() => sleepCalled = true)
-            .Returns(Task.CompletedTask);
-
-        await worker.ProcessItem(file, CancellationToken.None);
-
-        await Assert.That(sleepCalled).IsTrue();
-    }
-
-    [Test]
-    public async Task ProcessItem_SleepDurationIsTenSeconds()
-    {
-        var worker = CreateCleanupWorker();
-        var file = CreateTestFile(storeType: StoreRequestType.Default);
-        SetupTimeService(DateTime.UtcNow);
-        SetupQuotaService(QuotaState.Nominal);
-        SetupFileDeletion();
-        var sleepDuration = TimeSpan.Zero;
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback<TimeSpan, CancellationToken>((duration, _) => sleepDuration = duration)
-            .Returns(Task.CompletedTask);
-
-        await worker.ProcessItem(file, CancellationToken.None);
-
-        await Assert.That(sleepDuration.TotalSeconds).IsEqualTo(10);
-    }
-
-    [Test]
-    public async Task ProcessItem_PassesCancellationTokenToSleep()
-    {
-        var worker = CreateCleanupWorker();
-        var file = CreateTestFile(storeType: StoreRequestType.Default);
-        SetupTimeService(DateTime.UtcNow);
-        SetupQuotaService(QuotaState.Nominal);
-        SetupFileDeletion();
-        var cancellationToken = new CancellationToken();
-        var receivedToken = CancellationToken.None;
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback<TimeSpan, CancellationToken>((_, token) => receivedToken = token)
-            .Returns(Task.CompletedTask);
-
-        await worker.ProcessItem(file, cancellationToken);
-
-        await Assert.That(receivedToken).IsEqualTo(cancellationToken);
     }
 
     #endregion
@@ -461,7 +382,7 @@ public class CleanupWorkerTests
         var expiredFile = CreateTestFile(
             storeType: StoreRequestType.TemporaryFile,
             lastActivityUtc: now.AddHours(-3)); // 3 hours old, should expire in nominal state
-        await worker.ProcessItem(expiredFile, CancellationToken.None);
+        await worker.ProcessItem(expiredFile);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Once);
     }
@@ -481,7 +402,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Once);
     }
@@ -502,7 +423,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
         mockFileSystem.Verify(fs => fs.DeleteObject(file.Cid), Times.Once);
@@ -522,7 +443,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockLogger.AssertLogged(LogLevel.Trace, "Cleaning up");
         mockLogger.AssertLogged(LogLevel.Trace, "Successfully cleaned up");
@@ -542,7 +463,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockQuotaService.Verify(qs => qs.RemoveUsedBytes(fileLength), Times.Once);
     }
@@ -567,7 +488,7 @@ public class CleanupWorkerTests
             .ThrowsAsync(exception);
 
         await Assert.That(async () =>
-            await worker.ProcessItem(file, CancellationToken.None))
+            await worker.ProcessItem(file))
             .Throws<IOException>();
     }
 
@@ -588,7 +509,7 @@ public class CleanupWorkerTests
             .ThrowsAsync(new IOException("Metadata error"));
 
         await Assert.That(async () =>
-            await worker.ProcessItem(file, CancellationToken.None))
+            await worker.ProcessItem(file))
             .Throws<IOException>();
     }
 
@@ -609,7 +530,7 @@ public class CleanupWorkerTests
 
         try
         {
-            await worker.ProcessItem(file, CancellationToken.None);
+            await worker.ProcessItem(file);
         }
         catch { }
 
@@ -632,7 +553,7 @@ public class CleanupWorkerTests
 
         try
         {
-            await worker.ProcessItem(file, CancellationToken.None);
+            await worker.ProcessItem(file);
         }
         catch { }
 
@@ -661,7 +582,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
     }
@@ -682,7 +603,7 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
 
-        await worker.ProcessItem(file, CancellationToken.None);
+        await worker.ProcessItem(file);
 
         mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
     }

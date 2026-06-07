@@ -2,8 +2,6 @@ using ContentTower.Services;
 using ContentTower.System;
 using Microsoft.Extensions.Options;
 using Moq;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace ContentTower.Tests.Services;
 
@@ -33,6 +31,7 @@ public class ValidationServiceTests
         {
             DataPath = "/valid/data/path",
             Quota = 1048576 * 100, // 100 MB
+            CleanupIntervalSeconds = 600,
             StoreDurationDefaultNominalSeconds = 86400, // 1 day
             StoreDurationDefaultPressureSeconds = 43200, // 12 hours
             StoreDurationTemporaryNominalSeconds = 7200, // 2 hours

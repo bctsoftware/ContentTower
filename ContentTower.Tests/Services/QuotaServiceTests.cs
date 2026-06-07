@@ -35,6 +35,7 @@ public class QuotaServiceTests
         {
             DataPath = "/valid/data/path",
             Quota = quota,
+            CleanupIntervalSeconds = 600,
             StoreDurationDefaultNominalSeconds = 86400,
             StoreDurationDefaultPressureSeconds = 43200,
             StoreDurationTemporaryNominalSeconds = 7200,

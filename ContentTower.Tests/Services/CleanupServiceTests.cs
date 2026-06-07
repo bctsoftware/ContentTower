@@ -2,13 +2,16 @@ using ContentTower.Services;
 using ContentTower.System;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace ContentTower.Tests.Services;
 
 public class CleanupServiceTests
 {
+    private readonly int cleanupIntervalSeconds = 123;
     private readonly Mock<ILogger<CleanupService>> mockLogger;
+    private readonly Mock<IOptions<StorageOptions>> mockOptions;
     private readonly Mock<IHostApplicationLifetime> mockAppLifetime;
     private readonly Mock<IFileSystem> mockFileSystem;
     private readonly Mock<ITime> mockTimeService;
@@ -17,6 +20,7 @@ public class CleanupServiceTests
     public CleanupServiceTests()
     {
         mockLogger = new Mock<ILogger<CleanupService>>();
+        mockOptions = new Mock<IOptions<StorageOptions>>();
         mockAppLifetime = new Mock<IHostApplicationLifetime>();
         mockFileSystem = new Mock<IFileSystem>();
         mockTimeService = new Mock<ITime>();
@@ -27,8 +31,20 @@ public class CleanupServiceTests
 
     private CleanupService CreateCleanupService()
     {
+        mockOptions.Setup(o => o.Value).Returns(new StorageOptions
+        {
+            DataPath = "/data",
+            Quota = 1000000,
+            CleanupIntervalSeconds = cleanupIntervalSeconds,
+            StoreDurationDefaultNominalSeconds = 86400,      // 1 day
+            StoreDurationDefaultPressureSeconds = 43200,     // 12 hours
+            StoreDurationTemporaryNominalSeconds = 7200,     // 2 hours
+            StoreDurationTemporaryPressureSeconds = 3600     // 1 hour
+        });
+
         return new CleanupService(
             mockLogger.Object,
+            mockOptions.Object,
             mockAppLifetime.Object,
             mockFileSystem.Object,
             mockTimeService.Object,
@@ -140,9 +156,8 @@ public class CleanupServiceTests
         service.Start();
         await Task.Delay(100);
         
-
         await Assert.That(sleepCalled).IsTrue();
-        await Assert.That(sleepDuration.TotalMinutes).IsGreaterThan(5); // Should be 10 minutes
+        await Assert.That(sleepDuration.TotalSeconds).IsEqualTo(cleanupIntervalSeconds); // Should be 10 minutes
         mockTimeService.Verify(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
@@ -172,8 +187,8 @@ public class CleanupServiceTests
             })
             .Returns(Task.CompletedTask);
 
-        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>(), It.IsAny<CancellationToken>()))
-            .Callback<FileMetadata, CancellationToken>((item, _) => processedItems.Add(item))
+        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>()))
+            .Callback<FileMetadata>(processedItems.Add)
             .Returns(Task.CompletedTask);
 
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
@@ -181,9 +196,10 @@ public class CleanupServiceTests
 
         service.Start();
         await Task.Delay(200);
-        
 
         await Assert.That(processedItems).Contains(files[0]);
+
+        mockTimeService.Verify(t => t.Sleep(TimeSpan.FromMilliseconds(100), It.IsAny<CancellationToken>()), Times.Exactly(files.Count));
     }
 
     [Test]
@@ -208,8 +224,8 @@ public class CleanupServiceTests
             })
             .Returns(Task.CompletedTask);
 
-        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>(), It.IsAny<CancellationToken>()))
-            .Callback<FileMetadata, CancellationToken>((item, _) => processedItems.Add(item))
+        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>()))
+            .Callback<FileMetadata>(processedItems.Add)
             .Returns(Task.CompletedTask);
 
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
@@ -244,13 +260,13 @@ public class CleanupServiceTests
             })
             .Returns(Task.CompletedTask);
 
-        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>(), It.IsAny<CancellationToken>()))
+        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>()))
             .Returns(Task.CompletedTask);
 
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Callback<TimeSpan, CancellationToken>((duration, ct) =>
             {
-                if (duration.TotalMinutes > 5) // Long sleep after fill
+                if (duration.TotalSeconds == cleanupIntervalSeconds) // Long sleep after fill
                     queueRemovals++;
             })
             .Returns(Task.CompletedTask);
@@ -258,7 +274,6 @@ public class CleanupServiceTests
         service.Start();
         await Task.Delay(150);
         
-
         await Assert.That(queueRemovals).IsGreaterThan(0);
     }
 

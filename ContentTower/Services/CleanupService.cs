@@ -1,4 +1,5 @@
 ﻿using ContentTower.System;
+using Microsoft.Extensions.Options;
 
 namespace ContentTower.Services
 {
@@ -9,7 +10,8 @@ namespace ContentTower.Services
 
     public class CleanupService : ICleanupService
     {
-        private readonly TimeSpan longSleep = TimeSpan.FromMinutes(10);
+        private readonly TimeSpan longSleep;
+        private readonly TimeSpan stepSleep = TimeSpan.FromMilliseconds(100);
         private readonly ILogger<CleanupService> logger;
         private readonly IHostApplicationLifetime appLifetime;
         private readonly IFileSystem fs;
@@ -17,18 +19,20 @@ namespace ContentTower.Services
         private readonly ICleanupWorker cleanupWorker;
         private readonly List<FileMetadata> queue = new List<FileMetadata>();
 
-        public CleanupService(ILogger<CleanupService> logger, IHostApplicationLifetime  appLifetime, IFileSystem fs, ITime timeService, ICleanupWorker cleanupWorker)
+        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, IFileSystem fs, ITime timeService, ICleanupWorker cleanupWorker)
         {
             this.logger = logger;
             this.appLifetime = appLifetime;
             this.fs = fs;
             this.timeService = timeService;
             this.cleanupWorker = cleanupWorker;
+
+            longSleep = options.Value.CleanupInterval;
         }
 
         public void Start()
         {
-            logger.LogInformation("Cleanup service starting...");
+            logger.LogInformation("Cleanup service starting with interval {0}...", Utils.FormatDuration(longSleep));
             Task.Run(Worker);
         }
 
@@ -65,7 +69,8 @@ namespace ContentTower.Services
             {
                 var item = queue.First();
                 queue.RemoveAt(0);
-                await cleanupWorker.ProcessItem(item, Ct);
+                await cleanupWorker.ProcessItem(item);
+                await timeService.Sleep(stepSleep, Ct);
             }
         }
 

@@ -12,6 +12,7 @@ services:
       
       Storage__Quota: "1073741824"  # 1 GB in bytes
       Storage__DataPath: "/app/data"
+      Storage__CleanupIntervalSeconds: "600"
       Storage__StoreDurationDefaultNominalSeconds: "2592000"
       Storage__StoreDurationDefaultPressureSeconds: "1296000"
       Storage__StoreDurationTemporaryNominalSeconds: "86400"

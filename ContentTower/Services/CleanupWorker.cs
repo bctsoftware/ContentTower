@@ -6,7 +6,7 @@ namespace ContentTower.Services
 {
     public interface ICleanupWorker
     {
-        Task ProcessItem(FileMetadata item, CancellationToken ct);
+        Task ProcessItem(FileMetadata item);
     }
 
     public class CleanupWorker : ICleanupWorker
@@ -17,7 +17,6 @@ namespace ContentTower.Services
         private readonly ITime timeService;
         private readonly IPresenceService presenceService;
         private readonly IFileSystem fs;
-        private readonly TimeSpan stepSleep = TimeSpan.FromSeconds(10);
         private readonly Dictionary<QuotaState, Dictionary<StoreRequestType, Func<TimeSpan>>> timespanSelectors = new();
 
         public CleanupWorker(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IQuotaService quotaService, ITime timeService, IPresenceService presenceService, IFileSystem fs)
@@ -31,13 +30,12 @@ namespace ContentTower.Services
             CreateTimespanSelectors();
         }
 
-        public async Task ProcessItem(FileMetadata item, CancellationToken ct)
+        public async Task ProcessItem(FileMetadata item)
         {
-            await ProcessItemInternal(item, ct);
-            await timeService.Sleep(stepSleep, ct);
+            await ProcessItemInternal(item);
         }
 
-        private async Task ProcessItemInternal(FileMetadata item, CancellationToken ct)
+        private async Task ProcessItemInternal(FileMetadata item)
         {
             if (item.StoreType == StoreRequestType.PermanentFile) return;
 

@@ -26,6 +26,7 @@ namespace ContentTower.Services
             if (string.IsNullOrEmpty(options.DataPath)) faults.Add("DataPath not provided.");
             if (!fs.CheckCreateDir(options.DataPath)) faults.Add("Unable to create DataPath");
             if (options.Quota < 1024 * 1024) faults.Add("Quota must be at least 1 MB (1048576)");
+            ValidateTimespan(faults, options.CleanupInterval, 1, nameof(StorageOptions.CleanupInterval));
             ValidateTimespan(faults, options.StoreDurationDefaultNominal, nameof(StorageOptions.StoreDurationDefaultNominal));
             ValidateTimespan(faults, options.StoreDurationDefaultPressure, nameof(StorageOptions.StoreDurationDefaultPressure));
             ValidateTimespan(faults, options.StoreDurationTemporaryNominal, nameof(StorageOptions.StoreDurationTemporaryNominal));
@@ -37,9 +38,14 @@ namespace ContentTower.Services
             }
         }
 
+        private static void ValidateTimespan(List<string> faults, TimeSpan t, int minSeconds, string name)
+        {
+            if (t.TotalSeconds < minSeconds) faults.Add($"Timespan for {name} is too short. Must be at least {minSeconds} seconds.");
+        }
+
         private static void ValidateTimespan(List<string> faults, TimeSpan t, string name)
         {
-            if (t.TotalSeconds < MinTimespanSeconds) faults.Add($"Timespan for {name} is too short. Must be at least {MinTimespanSeconds} seconds.");
+            ValidateTimespan(faults, t, MinTimespanSeconds, name);
         }
     }
 }
