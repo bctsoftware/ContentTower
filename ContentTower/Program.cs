@@ -31,6 +31,7 @@ namespace ContentTower
             builder.Services.AddSingleton<ITime, Time>();
             builder.Services.AddSingleton<IFileSystem, FileSystem>();
             // Services:
+            builder.Services.AddSingleton<ICleanupWorker, CleanupWorker>();
             builder.Services.AddSingleton<ICleanupService, CleanupService>();
             builder.Services.AddSingleton<IHashService, HashService>();
             builder.Services.AddSingleton<ILoadService, LoadService>();
