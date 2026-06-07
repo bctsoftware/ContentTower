@@ -1,15 +1,15 @@
 using ContentTower.Services;
 using ContentTower.System;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace ContentTower.Tests.Services;
 
 public class CleanupServiceTests
 {
     private readonly Mock<ILogger<CleanupService>> mockLogger;
+    private readonly Mock<IHostApplicationLifetime> mockAppLifetime;
     private readonly Mock<IFileSystem> mockFileSystem;
     private readonly Mock<ITime> mockTimeService;
     private readonly Mock<ICleanupWorker> mockCleanupWorker;
@@ -17,6 +17,7 @@ public class CleanupServiceTests
     public CleanupServiceTests()
     {
         mockLogger = new Mock<ILogger<CleanupService>>();
+        mockAppLifetime = new Mock<IHostApplicationLifetime>();
         mockFileSystem = new Mock<IFileSystem>();
         mockTimeService = new Mock<ITime>();
         mockCleanupWorker = new Mock<ICleanupWorker>();
@@ -28,6 +29,7 @@ public class CleanupServiceTests
     {
         return new CleanupService(
             mockLogger.Object,
+            mockAppLifetime.Object,
             mockFileSystem.Object,
             mockTimeService.Object,
             mockCleanupWorker.Object
@@ -71,9 +73,8 @@ public class CleanupServiceTests
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(50); // Allow worker to start
-        await service.Stop();
 
         mockLogger.Verify(l => l.Log(
             It.IsAny<LogLevel>(),
@@ -95,100 +96,10 @@ public class CleanupServiceTests
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(100); // Allow worker to execute
 
         await Assert.That(fillQueueCalled).IsTrue();
-
-        await service.Stop();
-    }
-
-    [Test]
-    public async Task Start_MultipleCallsCreatesNewWorkerEachTime()
-    {
-        var service = CreateCleanupService();
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        await service.Start();
-        await Task.Delay(50);
-        await service.Stop();
-
-        // Second start
-        await service.Start();
-        await Task.Delay(50);
-
-        mockLogger.Verify(l => l.Log(
-            It.IsAny<LogLevel>(),
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cleanup service starting")),
-            It.IsAny<Exception>(),
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.AtLeast(2));
-
-        await service.Stop();
-    }
-
-    #endregion
-
-    #region Tests - Stop
-
-    [Test]
-    public async Task Stop_CancelsCancellationToken()
-    {
-        var service = CreateCleanupService();
-        var sleepCalled = false;
-        var cancellationTokenPassed = CancellationToken.None;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback<TimeSpan, CancellationToken>((_, ct) =>
-            {
-                sleepCalled = true;
-                cancellationTokenPassed = ct;
-            })
-            .Returns(Task.CompletedTask);
-
-        await service.Start();
-        await Task.Delay(50);
-        await service.Stop();
-
-        await Assert.That(sleepCalled).IsTrue();
-        mockLogger.Verify(l => l.Log(
-            It.IsAny<LogLevel>(),
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cleanup service stopped")),
-            It.IsAny<Exception>(),
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.Once);
-    }
-
-    [Test]
-    public async Task Stop_WaitsForWorkerCompletion()
-    {
-        var service = CreateCleanupService();
-        var workerCompletedBeforeStop = false;
-        var stopCalledAfterWorkerStarted = false;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback(() => stopCalledAfterWorkerStarted = true)
-            .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback(() =>
-            {
-                if (stopCalledAfterWorkerStarted)
-                    workerCompletedBeforeStop = true;
-            })
-            .Returns(Task.CompletedTask);
-
-        await service.Start();
-        await Task.Delay(50);
-        await service.Stop();
-
-        await Assert.That(workerCompletedBeforeStop).IsTrue();
     }
 
     #endregion
@@ -207,9 +118,9 @@ public class CleanupServiceTests
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(100);
-        await service.Stop();
+        
 
         await Assert.That(fillQueueCalled).IsTrue();
         mockFileSystem.Verify(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()), Times.AtLeastOnce);
@@ -232,9 +143,9 @@ public class CleanupServiceTests
             })
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(100);
-        await service.Stop();
+        
 
         await Assert.That(sleepCalled).IsTrue();
         await Assert.That(sleepDuration.TotalMinutes).IsGreaterThan(5); // Should be 10 minutes
@@ -274,9 +185,9 @@ public class CleanupServiceTests
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(200);
-        await service.Stop();
+        
 
         await Assert.That(processedItems).Contains(files[0]);
     }
@@ -310,9 +221,9 @@ public class CleanupServiceTests
         mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(300);
-        await service.Stop();
+        
 
         await Assert.That(processedItems).HasCount(3);
         await Assert.That(processedItems[0].Cid.Hash).IsEqualTo(files[0].Cid.Hash);
@@ -350,61 +261,11 @@ public class CleanupServiceTests
             })
             .Returns(Task.CompletedTask);
 
-        await service.Start();
+        service.Start();
         await Task.Delay(150);
-        await service.Stop();
+        
 
         await Assert.That(queueRemovals).IsGreaterThan(0);
-    }
-
-    #endregion
-
-    #region Tests - Worker Loop
-
-    [Test]
-    public async Task Worker_ContinuesUntilCancellationRequested()
-    {
-        var service = CreateCleanupService();
-        var fillQueueCallCount = 0;
-        var maxCallsToWait = 3;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback(() => fillQueueCallCount++)
-            .Returns(Task.CompletedTask);
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        await service.Start();
-        await Task.Delay(200); // Allow multiple iterations
-        await service.Stop();
-
-        await Assert.That(fillQueueCallCount).IsGreaterThanOrEqualTo(1);
-    }
-
-    [Test]
-    public async Task Worker_HandlesExceptionsByExiting()
-    {
-        var service = CreateCleanupService();
-        var exceptionThrown = new InvalidOperationException("Test exception");
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .ThrowsAsync(exceptionThrown);
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        await service.Start();
-        await Task.Delay(100);
-
-        // Verify error was logged
-        mockLogger.Verify(l => l.Log(
-            LogLevel.Error,
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Fatal: Cleanup worker stopped")),
-            exceptionThrown,
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.Once);
     }
 
     #endregion

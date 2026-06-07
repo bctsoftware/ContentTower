@@ -4,41 +4,32 @@ namespace ContentTower.Services
 {
     public interface ICleanupService
     {
-        Task Start();
-        Task Stop();
+        void Start();
     }
 
     public class CleanupService : ICleanupService
     {
         private readonly TimeSpan longSleep = TimeSpan.FromMinutes(10);
         private readonly ILogger<CleanupService> logger;
+        private readonly IHostApplicationLifetime appLifetime;
         private readonly IFileSystem fs;
         private readonly ITime timeService;
         private readonly ICleanupWorker cleanupWorker;
         private readonly List<FileMetadata> queue = new List<FileMetadata>();
-        private CancellationTokenSource cts = new CancellationTokenSource();
-        private Task worker = Task.CompletedTask;
 
-        public CleanupService(ILogger<CleanupService> logger, IFileSystem fs, ITime timeService, ICleanupWorker cleanupWorker)
+        public CleanupService(ILogger<CleanupService> logger, IHostApplicationLifetime  appLifetime, IFileSystem fs, ITime timeService, ICleanupWorker cleanupWorker)
         {
             this.logger = logger;
+            this.appLifetime = appLifetime;
             this.fs = fs;
             this.timeService = timeService;
             this.cleanupWorker = cleanupWorker;
         }
 
-        public async Task Start()
+        public void Start()
         {
             logger.LogInformation("Cleanup service starting...");
-            cts = new CancellationTokenSource();
-            worker = Task.Run(Worker);
-        }
-
-        public async Task Stop()
-        {
-            cts.Cancel();
-            worker.Wait();
-            logger.LogInformation("Cleanup service stopped.");
+            Task.Run(Worker);
         }
 
         private async Task Worker()
@@ -46,6 +37,11 @@ namespace ContentTower.Services
             try
             {
                 await InternalWorker();
+            }
+            catch (TaskCanceledException)
+            {
+                // Graceful shutdown
+                return;
             }
             catch (Exception ex)
             {
@@ -56,7 +52,7 @@ namespace ContentTower.Services
 
         private async Task InternalWorker()
         {
-            while (!cts.IsCancellationRequested)
+            while (!Ct.IsCancellationRequested)
             {
                 await Step();
             }
@@ -69,14 +65,16 @@ namespace ContentTower.Services
             {
                 var item = queue.First();
                 queue.RemoveAt(0);
-                await cleanupWorker.ProcessItem(item, cts.Token);
+                await cleanupWorker.ProcessItem(item, Ct);
             }
         }
 
         private async Task FillQueue()
         {
             await fs.IterateObjects<FileMetadata>(queue.Add);
-            await timeService.Sleep(longSleep, cts.Token);
+            await timeService.Sleep(longSleep, Ct);
         }
+
+        private CancellationToken Ct => appLifetime.ApplicationStopping;
     }
 }

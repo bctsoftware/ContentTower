@@ -1,7 +1,7 @@
 services:
   contenttower:
     build:
-      context: .
+      context: ./ContentTower
       dockerfile: Dockerfile
     container_name: contenttower
     ports:

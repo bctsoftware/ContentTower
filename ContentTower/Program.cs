@@ -20,8 +20,6 @@ namespace ContentTower
             app.UseAuthorization();
             app.MapControllers();
             app.Run();
-
-            await Get<ICleanupService>(app).Stop();
         }
 
         private static WebApplication BuildApp(string[] args)
@@ -49,7 +47,7 @@ namespace ContentTower
         private static async Task InitializeServices(WebApplication app)
         {
             await Get<IQuotaService>(app).Initialize();
-            await Get<ICleanupService>(app).Start();
+            Get<ICleanupService>(app).Start();
         }
 
         private static void InitializeOptions(WebApplication app)
