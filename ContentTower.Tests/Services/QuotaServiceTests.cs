@@ -4,9 +4,6 @@ using ContentTower.System;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using System.Text;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace ContentTower.Tests.Services;
 
@@ -436,14 +433,7 @@ public class QuotaServiceTests
 
         service.RemoveUsedBytes(50000); // Remove when used is 0
 
-        mockLogger.Verify(
-            l => l.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Quota skew")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        mockLogger.AssertLogged(LogLevel.Warning, "Quota skew");
     }
 
     [Test]
@@ -526,14 +516,7 @@ public class QuotaServiceTests
 
         service.AddUsedBytes(850000); // Transition to Pressure
 
-        mockLogger.Verify(
-            l => l.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("pressure")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        mockLogger.AssertLogged(LogLevel.Warning, "pressure");
     }
 
     [Test]
@@ -553,14 +536,7 @@ public class QuotaServiceTests
 
         service.RemoveUsedBytes(150000); // Transition from Pressure to Nominal
 
-        mockLogger.Verify(
-            l => l.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("pressure") && v.ToString().Contains("resolved")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        mockLogger.AssertLogged(LogLevel.Warning, "resolved");
     }
 
     [Test]
@@ -584,7 +560,7 @@ public class QuotaServiceTests
             l => l.Log(
                 It.IsAny<LogLevel>(),
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("pressure")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("pressure")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Never);

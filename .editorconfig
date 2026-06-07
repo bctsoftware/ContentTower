@@ -2,3 +2,6 @@
 
 # IDE0005: Using directive is unnecessary.
 dotnet_diagnostic.IDE0005.severity = error
+
+# CS8602: Dereference of a possibly null reference.
+dotnet_diagnostic.CS8602.severity = error

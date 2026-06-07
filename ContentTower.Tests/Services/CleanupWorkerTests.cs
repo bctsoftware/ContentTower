@@ -4,8 +4,6 @@ using ContentTower.System;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace ContentTower.Tests.Services;
 
@@ -526,21 +524,8 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file, CancellationToken.None);
 
-        mockLogger.Verify(l => l.Log(
-            LogLevel.Trace,
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cleaning up")),
-            It.IsAny<Exception>(),
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.Once);
-
-        mockLogger.Verify(l => l.Log(
-            LogLevel.Trace,
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Successfully cleaned up")),
-            It.IsAny<Exception>(),
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.Once);
+        mockLogger.AssertLogged(LogLevel.Trace, "Cleaning up");
+        mockLogger.AssertLogged(LogLevel.Trace, "Successfully cleaned up");
     }
 
     [Test]
@@ -628,13 +613,7 @@ public class CleanupWorkerTests
         }
         catch { }
 
-        mockLogger.Verify(l => l.Log(
-            LogLevel.Error,
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Fatal: Failed to delete file")),
-            exception,
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.Once);
+        mockLogger.AssertLogged(LogLevel.Error, "Fatal: Failed to delete file");
     }
 
     [Test]

@@ -76,13 +76,7 @@ public class CleanupServiceTests
         service.Start();
         await Task.Delay(50); // Allow worker to start
 
-        mockLogger.Verify(l => l.Log(
-            It.IsAny<LogLevel>(),
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cleanup service starting")),
-            It.IsAny<Exception>(),
-            It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-            Times.Once);
+        mockLogger.AssertLogged(LogLevel.Information, "Cleanup service starting");
     }
 
     [Test]
@@ -225,7 +219,7 @@ public class CleanupServiceTests
         await Task.Delay(300);
         
 
-        await Assert.That(processedItems).HasCount(3);
+        await Assert.That(processedItems.Count).IsEqualTo(3);
         await Assert.That(processedItems[0].Cid.Hash).IsEqualTo(files[0].Cid.Hash);
         await Assert.That(processedItems[1].Cid.Hash).IsEqualTo(files[1].Cid.Hash);
         await Assert.That(processedItems[2].Cid.Hash).IsEqualTo(files[2].Cid.Hash);
