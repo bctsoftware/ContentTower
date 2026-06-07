@@ -1,4 +1,5 @@
 ﻿using ContentTower.Services;
+using ContentTower.System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 
@@ -10,11 +11,15 @@ namespace ContentTower.Controllers
     {
         private readonly IPresenceService presenceService;
         private readonly ILoadService loadService;
+        private readonly IFileSystem fs;
+        private readonly ITime timeService;
 
-        public DownloadController(IPresenceService presenceService, ILoadService loadService)
+        public DownloadController(IPresenceService presenceService, ILoadService loadService, IFileSystem fs, ITime timeService)
         {
             this.presenceService = presenceService;
             this.loadService = loadService;
+            this.fs = fs;
+            this.timeService = timeService;
         }
 
         [HttpGet]
@@ -27,6 +32,7 @@ namespace ContentTower.Controllers
 
             var metadata = await loadService.ReadMetadata(contentId);
             var stream = await loadService.ReadData(contentId);
+            await UpdateLastActivity(metadata);
             return new FileStreamResult(stream, new MediaTypeHeaderValue(metadata.ContentType))
             {
                 FileDownloadName = metadata.Name
@@ -42,6 +48,12 @@ namespace ContentTower.Controllers
             var contentId = new Cid(cid);
             if (!presenceService.IsPresent(contentId)) return NotFound();
             return Ok();
+        }
+
+        private async Task UpdateLastActivity(FileMetadata metadata)
+        {
+            metadata.LastActivityUtc = timeService.UtcNow();
+            await fs.WriteObject(metadata.Cid, metadata);
         }
 
         private static bool IsValid(string cid)

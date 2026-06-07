@@ -131,7 +131,6 @@ public class CleanupServiceTests
         service.Start();
         await Task.Delay(100);
         
-
         await Assert.That(fillQueueCalled).IsTrue();
         mockFileSystem.Verify(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()), Times.AtLeastOnce);
     }
@@ -233,7 +232,6 @@ public class CleanupServiceTests
 
         service.Start();
         await Task.Delay(300);
-        
 
         await Assert.That(processedItems.Count).IsEqualTo(3);
         await Assert.That(processedItems[0].Cid.Hash).IsEqualTo(files[0].Cid.Hash);

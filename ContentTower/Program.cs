@@ -61,6 +61,7 @@ namespace ContentTower
             logger.LogInformation("Starting with options:");
             logger.LogInformation($"DataPath={options.DataPath}");
             logger.LogInformation($"Quota={options.Quota}");
+            logger.LogInformation($"CleanupInterval={Utils.FormatDuration(options.CleanupInterval)}");
             logger.LogInformation($"StoreDurationDefaultNominal={Utils.FormatDuration(options.StoreDurationDefaultNominal)}");
             logger.LogInformation($"StoreDurationDefaultPressure={Utils.FormatDuration(options.StoreDurationDefaultPressure)}");
             logger.LogInformation($"StoreDurationTemporaryNominal={Utils.FormatDuration(options.StoreDurationTemporaryNominal)}");

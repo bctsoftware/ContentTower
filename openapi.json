@@ -1,0 +1,182 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "ContentTower | v1",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5135/"
+    }
+  ],
+  "paths": {
+    "/Download/get/{cid}": {
+      "get": {
+        "tags": [
+          "Download"
+        ],
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Download/check/{cid}": {
+      "get": {
+        "tags": [
+          "Download"
+        ],
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Quota": {
+      "get": {
+        "tags": [
+          "Quota"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Upload": {
+      "post": {
+        "tags": [
+          "Upload"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "QuotaResponse": {
+        "type": "object",
+        "properties": {
+          "quota": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "used": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "state": {
+            "$ref": "#/components/schemas/QuotaState"
+          }
+        }
+      },
+      "QuotaState": {
+        "type": "integer"
+      },
+      "StoreRequestType": {
+        "type": "integer"
+      },
+      "UploadRequest": {
+        "type": "object",
+        "properties": {
+          "storeType": {
+            "$ref": "#/components/schemas/StoreRequestType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "byte"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Download"
+    },
+    {
+      "name": "Quota"
+    },
+    {
+      "name": "Upload"
+    }
+  ]
+}
