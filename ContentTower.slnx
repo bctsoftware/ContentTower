@@ -2,6 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
   </Folder>
+  <Project Path="ContentTower.IntegrationTests/ContentTower.IntegrationTests.csproj" Id="a49f8ce0-369c-4917-8fc4-8e3c5e7fe63e" />
   <Project Path="ContentTower.Tests/ContentTower.Tests.csproj" Id="a9de2069-dbe0-4cb9-bdf9-04a759b050b9" />
   <Project Path="ContentTower/ContentTower.csproj" />
 </Solution>

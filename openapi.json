@@ -83,6 +83,18 @@
         }
       }
     },
+    "/Quota/interval": {
+      "get": {
+        "tags": [
+          "Quota"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/Upload": {
       "post": {
         "tags": [

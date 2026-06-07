@@ -23,7 +23,15 @@ services:
     volumes:
       - contenttower_data:/app/data
     restart: unless-stopped
-
+  
+  integrationtests:
+    build:
+      context: ./ContentTower.IntegrationTests
+      dockerfile: Dockerfile
+    container_name: contenttowerintegrationtests
+    environment:
+      ContentTowerEndpoint: http://contenttower:8080
+      
 volumes:
   contenttower_data:
     driver: local

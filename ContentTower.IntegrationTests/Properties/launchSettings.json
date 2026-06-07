@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ContentTower.IntegrationTests": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
