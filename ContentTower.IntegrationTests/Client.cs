@@ -31,14 +31,14 @@ namespace ContentTower.IntegrationTests
             throw new Exception("Failed to connect");
         }
 
-        public Cid Upload(string name, string type, byte[] data)
+        public Cid Upload(string name, string type, byte[] data, StoreRequestType storeType = StoreRequestType.Default)
         {
             var response = On(api => api.UploadAsync(new UploadRequest
             {
                 Name = name,
                 ContentType = type,
                 Data = data,
-                StoreType = StoreRequestType.Default
+                StoreType = storeType
             }));
             log.Log($"Uploaded {data.Length} bytes '{name}' => {response.ContentId}");
             return new Cid(response.ContentId);

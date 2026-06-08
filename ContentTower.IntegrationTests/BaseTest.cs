@@ -6,7 +6,7 @@ namespace ContentTower.IntegrationTests
     public interface ITest
     {
         void Initialize(Client client, ILog log, DataHelper dataHelper, OptionsView options);
-        void Run();
+        void RunTest();
         string[] Failures { get; }
     }
 
@@ -24,6 +24,21 @@ namespace ContentTower.IntegrationTests
         }
 
         public abstract void Run();
+
+        public void RunTest()
+        {
+            Log("Start...");
+            try
+            {
+                Run();
+            }
+            catch (Exception ex)
+            {
+                Fail("Exception: " + ex);
+            }
+            if (failures.Count > 0) Log($"Finished with {failures.Count} failures.");
+            else Log("Finished successfully.");
+        }
 
         protected ILog Logger { get; private set; } = null!;
         protected Client Ct { get; private set; } = null!;
@@ -70,6 +85,35 @@ namespace ContentTower.IntegrationTests
                 Fail($"Check[{checkCounter}] '{str}' = Failed");
             }
             checkCounter++;
+        }
+
+        protected (string, string, Cid) UploadRandom(int length)
+        {
+            return UploadRandom(length, StoreRequestType.Default);
+        }
+
+        protected (string, string, Cid) UploadRandom(StoreRequestType storeType)
+        {
+            return UploadRandom(DataHelper.GetRandomNumber(1000, 50000), storeType);
+        }
+
+        protected (string, string, Cid) UploadRandom(int length, StoreRequestType storeType)
+        {
+            var name = DataHelper.GetRandomString();
+            var type = DataHelper.GetRandomString();
+            var data = DataHelper.GetRandomData(length);
+            var cid = Ct.Upload(name, type, data, storeType);
+            return (name, type, cid);
+        }
+
+        protected void Sleep(TimeSpan half)
+        {
+            Thread.Sleep(half);
+        }
+
+        protected void SleepCleanupInterval()
+        {
+            Thread.Sleep(TimeSpan.FromSeconds(Options.CleanupIntervalSeconds) * 2.0);
         }
     }
 }
