@@ -13,17 +13,15 @@ namespace ContentTower.IntegrationTests
             output.Log("Content-Tower Integration Tests");
             output.Log($"Using: '{ctAddress}'");
 
-            var client = new Client(ctAddress, new Prefixer(output, "(client)"));
+            var client = new Client(ctAddress, output);
             var options = client.Initialize();
 
             // start all tests
-            var a = new UploadDownloadTest(client, new Prefixer(output, "(UploadDownloadTest)"), new DataHelper());
+            var a = new UploadDownloadTest();
+            a.Initialize(client, output, new DataHelper(), options);
 
             // wait all tests finished
-            for (var i = 0; i < 100; i++)
-            {
-                a.Run();
-            }
+            a.Run();
 
             // process test results
 

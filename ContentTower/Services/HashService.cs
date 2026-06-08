@@ -27,7 +27,7 @@ namespace ContentTower.Services
             Hash = hash;
         }
 
-        public string Hash { get; }
+        public string Hash { get; set; } = string.Empty;
 
         public override string ToString()
         {

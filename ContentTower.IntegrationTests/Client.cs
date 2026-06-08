@@ -12,7 +12,7 @@ namespace ContentTower.IntegrationTests
         {
             client = new openapiClient(new HttpClient());
             client.BaseUrl = baseUrl;
-            this.log = log;
+            this.log = new Prefixer(log, "(Client)");
         }
 
         public OptionsView Initialize()
@@ -40,17 +40,22 @@ namespace ContentTower.IntegrationTests
                 Data = data,
                 StoreType = StoreRequestType.Default
             }));
+            log.Log($"Uploaded {data.Length} bytes '{name}' => {response.ContentId}");
             return new Cid(response.ContentId);
         }
 
         public bool Check(Cid cid)
         {
-            return On(api => api.CheckAsync(cid.Hash));
+            var result = On(api => api.CheckAsync(cid.Hash));
+            log.Log($"Checked {cid} => {result}");
+            return result;
         }
 
         public FileMetadata Metadata(Cid cid)
         {
-            return On(api => api.MetadataAsync(cid.Hash));
+            var result = On(api => api.MetadataAsync(cid.Hash));
+            log.Log($"Metadata {cid} => '{result.Name}'");
+            return result;
         }
 
         public byte[] Download(Cid cid)
@@ -58,7 +63,9 @@ namespace ContentTower.IntegrationTests
             using var stream = new MemoryStream();
             var fileResponse = On(api => api.DownloadAsync(cid.Hash));
             fileResponse.Stream.CopyTo(stream);
-            return stream.ToArray();
+            var data = stream.ToArray();
+            log.Log($"Downloaded {cid} => {data.Length} bytes");
+            return data;
         }
 
         public T On<T>(Func<openapiClient, Task<T>> action)
