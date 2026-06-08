@@ -1,7 +1,9 @@
 ﻿using ContentTower.Services;
+using System.Text.Json.Serialization;
 
 namespace ContentTower
 {
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum StoreRequestType
     {
         Default,

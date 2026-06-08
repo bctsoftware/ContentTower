@@ -18,15 +18,15 @@ namespace ContentTower.Controllers
 
         [HttpPost]
         [RequestSizeLimit(long.MaxValue)]
-        public async Task<IActionResult> Upload(UploadRequest request)
+        public async Task<UploadResponse> Upload(UploadRequest request)
         {
-            if (quotaService.IsFull()) return BadRequest("Storage quota is full.");
+            if (quotaService.IsFull()) throw new BadHttpRequestException("Storage quota is full.");
 
             var cid = await saveService.Handle(request);
-            return Ok(new UploadResponse
+            return new UploadResponse
             {
                 ContentId = cid.Hash
-            });
+            };
         }
     }
 

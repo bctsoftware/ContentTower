@@ -1,7 +1,7 @@
 ﻿using ContentTower.Services;
 using ContentTower.System;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
+using System.Net.Mime;
 
 namespace ContentTower.Controllers
 {
@@ -23,31 +23,39 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
-        [Route("get/{cid}")]
-        public async Task<IActionResult> Download([FromRoute] string cid)
+        [Route("download/{cid}")]
+        [ProducesResponseType<Stream>(StatusCodes.Status200OK, MediaTypeNames.Application.Octet)]
+        public async Task<Stream> Download([FromRoute] string cid)
         {
-            if (!IsValid(cid)) return BadRequest("Invalid CID");
+            if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
             var contentId = new Cid(cid);
-            if (!presenceService.IsPresent(contentId)) return NotFound();
+            if (!presenceService.IsPresent(contentId)) throw new BadHttpRequestException("Not found");
 
             var metadata = await loadService.ReadMetadata(contentId);
             var stream = await loadService.ReadData(contentId);
             await UpdateLastActivity(metadata);
-            return new FileStreamResult(stream, new MediaTypeHeaderValue(metadata.ContentType))
-            {
-                FileDownloadName = metadata.Name
-            };
+            return stream;
+        }
+
+        [HttpGet]
+        [Route("metadata/{cid}")]
+        public async Task<FileMetadata> Metadata([FromRoute] string cid)
+        {
+            if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
+            var contentId = new Cid(cid);
+            if (!presenceService.IsPresent(contentId)) throw new BadHttpRequestException("Not found");
+            return await loadService.ReadMetadata(contentId);
         }
 
         [HttpGet]
         [Route("check/{cid}")]
-        public async Task<IActionResult> Check([FromRoute] string cid)
+        public async Task<bool> Check([FromRoute] string cid)
         {
-            if (!IsValid(cid)) return BadRequest("Invalid CID");
+            if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
 
             var contentId = new Cid(cid);
-            if (!presenceService.IsPresent(contentId)) return NotFound();
-            return Ok();
+            if (!presenceService.IsPresent(contentId)) return false;
+            return true;
         }
 
         private async Task UpdateLastActivity(FileMetadata metadata)

@@ -6,11 +6,11 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5135/"
+      "url": "http://localhost:5000/"
     }
   ],
   "paths": {
-    "/Download/get/{cid}": {
+    "/Download/download/{cid}": {
       "get": {
         "tags": [
           "Download"
@@ -27,7 +27,53 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Download/metadata/{cid}": {
+      "get": {
+        "tags": [
+          "Download"
+        ],
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileMetadata"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileMetadata"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileMetadata"
+                }
+              }
+            }
           }
         }
       }
@@ -49,7 +95,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
           }
         }
       }
@@ -83,14 +146,31 @@
         }
       }
     },
-    "/Quota/interval": {
+    "/Quota/config": {
       "get": {
         "tags": [
           "Quota"
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionsView"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionsView"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionsView"
+                }
+              }
+            }
           }
         }
       }
@@ -122,7 +202,24 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -130,6 +227,95 @@
   },
   "components": {
     "schemas": {
+      "Cid": {
+        "required": [
+          "hash"
+        ],
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string"
+          }
+        }
+      },
+      "FileMetadata": {
+        "type": "object",
+        "properties": {
+          "cid": {
+            "$ref": "#/components/schemas/Cid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "length": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "storeType": {
+            "$ref": "#/components/schemas/StoreRequestType"
+          },
+          "uploadUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastActivityUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OptionsView": {
+        "type": "object",
+        "properties": {
+          "cleanupIntervalSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "storeDurationDefaultNominalSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "storeDurationDefaultPressureSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "storeDurationTemporaryNominalSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "storeDurationTemporaryPressureSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "QuotaResponse": {
         "type": "object",
         "properties": {
@@ -158,7 +344,15 @@
         "type": "integer"
       },
       "StoreRequestType": {
-        "type": "integer"
+        "enum": [
+          "Default",
+          "TemporaryFile",
+          "PermanentFile"
+        ]
+      },
+      "Stream": {
+        "type": "string",
+        "format": "binary"
       },
       "UploadRequest": {
         "type": "object",
@@ -175,6 +369,14 @@
           "data": {
             "type": "string",
             "format": "byte"
+          }
+        }
+      },
+      "UploadResponse": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string"
           }
         }
       }

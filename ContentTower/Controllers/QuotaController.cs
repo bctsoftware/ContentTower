@@ -24,10 +24,10 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
-        [Route("interval")]
-        public async Task<IActionResult> GetInterval()
+        [Route("config")]
+        public async Task<OptionsView> GetConfig()
         {
-            return Ok(options.CleanupIntervalSeconds);
+            return new OptionsView(options);
         }
     }
 
@@ -43,5 +43,23 @@ namespace ContentTower.Controllers
         Nominal,
         Pressure,
         Full
+    }
+
+    public class OptionsView
+    {
+        public OptionsView(StorageOptions options)
+        {
+            CleanupIntervalSeconds = options.CleanupIntervalSeconds;
+            StoreDurationDefaultNominalSeconds = options.StoreDurationDefaultNominalSeconds;
+            StoreDurationDefaultPressureSeconds = options.StoreDurationDefaultPressureSeconds;
+            StoreDurationTemporaryNominalSeconds = options.StoreDurationTemporaryNominalSeconds;
+            StoreDurationTemporaryPressureSeconds = options.StoreDurationTemporaryPressureSeconds;
+        }
+
+        public int CleanupIntervalSeconds { get; set; }
+        public int StoreDurationDefaultNominalSeconds { get; set; }
+        public int StoreDurationDefaultPressureSeconds { get; set; }
+        public int StoreDurationTemporaryNominalSeconds { get; set; }
+        public int StoreDurationTemporaryPressureSeconds { get; set; }
     }
 }

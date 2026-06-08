@@ -15,7 +15,8 @@ namespace ContentTower.Services
         {
             var algorithm = SHA256.Create();
             var hash = algorithm.ComputeHash(data);
-            return new Cid(CidPrefix + Convert.ToBase64String(hash));
+            var encoded = SimpleBase.Base58.Bitcoin.Encode(hash);
+            return new Cid(CidPrefix + encoded);
         }
     }
 

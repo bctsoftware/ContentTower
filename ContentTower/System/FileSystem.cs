@@ -106,11 +106,13 @@ namespace ContentTower.System
 
         private string GetJsonFilepath(Cid cid)
         {
+            if (string.IsNullOrEmpty(cid.Hash)) throw new Exception("Invalid CID");
             return Path.Combine(options.DataPath, cid.Hash + ".json");
         }
 
         private string GetDataFilepath(Cid cid)
         {
+            if (string.IsNullOrEmpty(cid.Hash)) throw new Exception("Invalid CID");
             return Path.Combine(options.DataPath, cid.Hash + ".data");
         }
     }
