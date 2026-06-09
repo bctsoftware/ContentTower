@@ -10,6 +10,50 @@
     }
   ],
   "paths": {
+    "/Delete/{cid}": {
+      "delete": {
+        "tags": [
+          "Delete"
+        ],
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Delete/force/{cid}": {
+      "delete": {
+        "tags": [
+          "Delete"
+        ],
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/Download/download/{cid}": {
       "get": {
         "tags": [
@@ -383,6 +427,9 @@
     }
   },
   "tags": [
+    {
+      "name": "Delete"
+    },
     {
       "name": "Download"
     },

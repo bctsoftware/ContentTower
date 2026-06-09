@@ -1,5 +1,4 @@
-﻿using ContentTower.IntegrationTests.Tests;
-using ContentTowerOpenAPIClient;
+﻿using ContentTowerOpenAPIClient;
 
 namespace ContentTower.IntegrationTests
 {
@@ -35,28 +34,24 @@ namespace ContentTower.IntegrationTests
         }
 
         public void Run()
-        { 
-            var tests = new ITest[]
-            {
-                new ActivityExtendsTempFileTest(),
-                new DefaultCleanupTest(),
-                new TempfileCleanupTest(),
-                new UploadDownloadTest()
-            };
+        {
+            var tests = DiscoverTests();
 
-            // start all tests
-            var workers = new List<Task>();
-            foreach (var test in tests)
-            {
-                workers.Add(Task.Run(() => RunTest(test)));
-                Thread.Sleep(3000);
-            }
+            var workers = StartTests(tests);
 
-            // wait all tests finished
             Task.WaitAll(workers);
 
-            // process test results
-            output.Log("Done! todo process results");
+            ProcessResults(tests);
+            output.Log("Done!");
+        }
+
+        private IEnumerable<Task> StartTests(ITest[] tests)
+        {
+            foreach (var test in tests)
+            {
+                yield return Task.Run(() => RunTest(test));
+                Thread.Sleep(3000);
+            }
         }
 
         private void RunTest(ITest test)
@@ -71,6 +66,41 @@ namespace ContentTower.IntegrationTests
                 output.Log($"Exception raised by '{test.GetType().Name}' = {ex}");
                 Environment.Exit(1);
             }
+        }
+
+        private void ProcessResults(ITest[] tests)
+        {
+            var successfulls = tests.Count(t => t.Failures.Length == 0);
+            var failures = tests.Length - successfulls;
+
+            foreach (var t in tests)
+            {
+                PrintFailures(t);
+            }
+            output.Log("");
+            output.Log("");
+            output.Log("Results:");
+            output.Log($"Failed tests: {failures}");
+            output.Log($"Successful tests: {successfulls}");
+        }
+
+        private void PrintFailures(ITest t)
+        {
+            foreach (var f in t.Failures)
+            {
+                output.Log($" - {f}");
+            }
+        }
+
+        private static ITest[] DiscoverTests()
+        {
+            var assembly = typeof(Program).Assembly;
+            return assembly.GetTypes()
+                .Where(t => typeof(ITest).IsAssignableFrom(t))
+                .Where(t => !t.IsAbstract)
+                .Select(Activator.CreateInstance)
+                .Cast<ITest>()
+                .ToArray();
         }
     }
 }

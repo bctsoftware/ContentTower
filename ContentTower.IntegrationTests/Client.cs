@@ -68,6 +68,12 @@ namespace ContentTower.IntegrationTests
             return data;
         }
 
+        public void Delete(Cid cid, bool force = false)
+        {
+            if (force) On(api => api.ForceAsync(cid.Hash));
+            else On(api => api.DeleteAsync(cid.Hash));
+        }
+
         public T On<T>(Func<openapiClient, Task<T>> action)
         {
             lock (_lock)
@@ -75,6 +81,15 @@ namespace ContentTower.IntegrationTests
                 var task = action(client);
                 task.Wait();
                 return task.Result;
+            }
+        }
+
+        public void On(Func<openapiClient, Task> action)
+        {
+            lock (_lock)
+            {
+                var task = action(client);
+                task.Wait();
             }
         }
     }

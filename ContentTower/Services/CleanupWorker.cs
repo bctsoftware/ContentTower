@@ -11,22 +11,18 @@ namespace ContentTower.Services
 
     public class CleanupWorker : ICleanupWorker
     {
-        private readonly ILogger<CleanupService> logger;
         private readonly StorageOptions options;
         private readonly IQuotaService quotaService;
         private readonly ITime timeService;
-        private readonly IPresenceService presenceService;
-        private readonly IFileSystem fs;
+        private readonly IDeleteService deleteService;
         private readonly Dictionary<QuotaState, Dictionary<StoreRequestType, Func<TimeSpan>>> timespanSelectors = new();
 
-        public CleanupWorker(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IQuotaService quotaService, ITime timeService, IPresenceService presenceService, IFileSystem fs)
+        public CleanupWorker(IOptions<StorageOptions> options, IQuotaService quotaService, ITime timeService, IDeleteService deleteService)
         {
-            this.logger = logger;
             this.options = options.Value;
             this.quotaService = quotaService;
             this.timeService = timeService;
-            this.presenceService = presenceService;
-            this.fs = fs;
+            this.deleteService = deleteService;
             CreateTimespanSelectors();
         }
 
@@ -45,7 +41,7 @@ namespace ContentTower.Services
 
             if (timeService.UtcNow() > fileUtc + span)
             {
-                await DeleteFile(item);
+                await deleteService.DeleteFile(item);
             }
         }
 
@@ -56,24 +52,6 @@ namespace ContentTower.Services
             if (item.StoreType == StoreRequestType.TemporaryFile) return item.LastActivityUtc;
             if (item.StoreType == StoreRequestType.Default) return item.UploadUtc;
             throw new InvalidOperationException("Attempt to get fileUTC for unknown store type: " + item.StoreType);
-        }
-
-        private async Task DeleteFile(FileMetadata item)
-        {
-            logger.LogTrace("Cleaning up {0}...", item.Cid);
-            try
-            {
-                await fs.DeleteData(item.Cid);
-                await fs.DeleteObject(item.Cid);
-                presenceService.ClearPresence(item.Cid);
-                quotaService.RemoveUsedBytes(item.Length);
-                logger.LogTrace("Successfully cleaned up {0}.", item.Cid);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Fatal: Failed to delete file.");
-                throw;
-            }
         }
 
         private void CreateTimespanSelectors()

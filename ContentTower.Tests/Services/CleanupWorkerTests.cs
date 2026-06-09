@@ -1,7 +1,6 @@
 using ContentTower.Controllers;
 using ContentTower.Services;
 using ContentTower.System;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -9,21 +8,17 @@ namespace ContentTower.Tests.Services;
 
 public class CleanupWorkerTests
 {
-    private readonly Mock<ILogger<CleanupService>> mockLogger;
     private readonly Mock<IOptions<StorageOptions>> mockOptions;
     private readonly Mock<IQuotaService> mockQuotaService;
     private readonly Mock<ITime> mockTimeService;
-    private readonly Mock<IPresenceService> mockPresenceService;
-    private readonly Mock<IFileSystem> mockFileSystem;
+    private readonly Mock<IDeleteService> mockDeleteService;
 
     public CleanupWorkerTests()
     {
-        mockLogger = new Mock<ILogger<CleanupService>>();
         mockOptions = new Mock<IOptions<StorageOptions>>();
         mockQuotaService = new Mock<IQuotaService>();
         mockTimeService = new Mock<ITime>();
-        mockPresenceService = new Mock<IPresenceService>();
-        mockFileSystem = new Mock<IFileSystem>();
+        mockDeleteService = new Mock<IDeleteService>();
     }
 
     #region Helper Methods
@@ -33,12 +28,10 @@ public class CleanupWorkerTests
         var optionsToUse = options ?? CreateValidStorageOptions();
         mockOptions.Setup(o => o.Value).Returns(optionsToUse);
         return new CleanupWorker(
-            mockLogger.Object,
             mockOptions.Object,
             mockQuotaService.Object,
             mockTimeService.Object,
-            mockPresenceService.Object,
-            mockFileSystem.Object
+            mockDeleteService.Object
         );
     }
 
@@ -99,9 +92,7 @@ public class CleanupWorkerTests
 
     private void SetupFileDeletion()
     {
-        mockFileSystem.Setup(fs => fs.DeleteData(It.IsAny<Cid>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.DeleteObject(It.IsAny<Cid>()))
+        mockDeleteService.Setup(fs => fs.DeleteFile(It.IsAny<FileMetadata>()))
             .Returns(Task.CompletedTask);
     }
 
@@ -120,10 +111,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
-        mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
-        mockPresenceService.Verify(ps => ps.ClearPresence(It.IsAny<Cid>()), Times.Never);
-        mockQuotaService.Verify(qs => qs.RemoveUsedBytes(It.IsAny<long>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     #endregion
@@ -144,8 +132,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
-        mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     [Test]
@@ -162,10 +149,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
-        mockFileSystem.Verify(fs => fs.DeleteObject(file.Cid), Times.Once);
-        mockPresenceService.Verify(ps => ps.ClearPresence(file.Cid), Times.Once);
-        mockQuotaService.Verify(qs => qs.RemoveUsedBytes(file.Length), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -186,8 +170,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
-        mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     [Test]
@@ -204,8 +187,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
-        mockFileSystem.Verify(fs => fs.DeleteObject(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -226,7 +208,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     [Test]
@@ -243,7 +225,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -264,7 +246,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     [Test]
@@ -281,7 +263,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -302,7 +284,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     [Test]
@@ -319,7 +301,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -340,7 +322,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Never);
+        mockDeleteService.Verify(fs => fs.DeleteFile(It.IsAny<FileMetadata>()), Times.Never);
     }
 
     [Test]
@@ -357,7 +339,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -371,10 +353,6 @@ public class CleanupWorkerTests
         var now = DateTime.UtcNow;
         var uploadTime = now.AddDays(-5);
         var lastActivityTime = now.AddHours(-1);
-        var file = CreateTestFile(
-            storeType: StoreRequestType.TemporaryFile,
-            uploadUtc: uploadTime,
-            lastActivityUtc: lastActivityTime);
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
@@ -384,7 +362,7 @@ public class CleanupWorkerTests
             lastActivityUtc: now.AddHours(-3)); // 3 hours old, should expire in nominal state
         await worker.ProcessItem(expiredFile);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(expiredFile), Times.Once);
     }
 
     [Test]
@@ -404,7 +382,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(It.IsAny<Cid>()), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -425,47 +403,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
-        mockFileSystem.Verify(fs => fs.DeleteObject(file.Cid), Times.Once);
-        mockPresenceService.Verify(ps => ps.ClearPresence(file.Cid), Times.Once);
-        mockQuotaService.Verify(qs => qs.RemoveUsedBytes(file.Length), Times.Once);
-    }
-
-    [Test]
-    public async Task DeleteFile_SuccessfulDeletion_LogsTraceMessages()
-    {
-        var worker = CreateCleanupWorker();
-        var now = DateTime.UtcNow;
-        var file = CreateTestFile(
-            storeType: StoreRequestType.Default,
-            uploadUtc: now.AddDays(-2)); // Expired
-        SetupTimeService(now);
-        SetupQuotaService(QuotaState.Nominal);
-        SetupFileDeletion();
-
-        await worker.ProcessItem(file);
-
-        mockLogger.AssertLogged(LogLevel.Trace, "Cleaning up");
-        mockLogger.AssertLogged(LogLevel.Trace, "Successfully cleaned up");
-    }
-
-    [Test]
-    public async Task DeleteFile_RemovesCorrectAmountOfBytes()
-    {
-        var worker = CreateCleanupWorker();
-        var now = DateTime.UtcNow;
-        var fileLength = 50000L;
-        var file = CreateTestFile(
-            length: fileLength,
-            storeType: StoreRequestType.Default,
-            uploadUtc: now.AddDays(-2)); // Expired
-        SetupTimeService(now);
-        SetupQuotaService(QuotaState.Nominal);
-        SetupFileDeletion();
-
-        await worker.ProcessItem(file);
-
-        mockQuotaService.Verify(qs => qs.RemoveUsedBytes(fileLength), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion
@@ -484,82 +422,12 @@ public class CleanupWorkerTests
         SetupQuotaService(QuotaState.Nominal);
         var exception = new IOException("Disk error");
 
-        mockFileSystem.Setup(fs => fs.DeleteData(It.IsAny<Cid>()))
+        mockDeleteService.Setup(fs => fs.DeleteFile(It.IsAny<FileMetadata>()))
             .ThrowsAsync(exception);
 
         await Assert.That(async () =>
             await worker.ProcessItem(file))
             .Throws<IOException>();
-    }
-
-    [Test]
-    public async Task DeleteFile_DeleteObjectFails_ThrowsException()
-    {
-        var worker = CreateCleanupWorker();
-        var now = DateTime.UtcNow;
-        var file = CreateTestFile(
-            storeType: StoreRequestType.Default,
-            uploadUtc: now.AddDays(-2)); // Expired
-        SetupTimeService(now);
-        SetupQuotaService(QuotaState.Nominal);
-
-        mockFileSystem.Setup(fs => fs.DeleteData(It.IsAny<Cid>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.DeleteObject(It.IsAny<Cid>()))
-            .ThrowsAsync(new IOException("Metadata error"));
-
-        await Assert.That(async () =>
-            await worker.ProcessItem(file))
-            .Throws<IOException>();
-    }
-
-    [Test]
-    public async Task DeleteFile_FailureDuringDeletion_LogsError()
-    {
-        var worker = CreateCleanupWorker();
-        var now = DateTime.UtcNow;
-        var file = CreateTestFile(
-            storeType: StoreRequestType.Default,
-            uploadUtc: now.AddDays(-2)); // Expired
-        SetupTimeService(now);
-        SetupQuotaService(QuotaState.Nominal);
-        var exception = new IOException("Disk error");
-
-        mockFileSystem.Setup(fs => fs.DeleteData(It.IsAny<Cid>()))
-            .ThrowsAsync(exception);
-
-        try
-        {
-            await worker.ProcessItem(file);
-        }
-        catch { }
-
-        mockLogger.AssertLogged(LogLevel.Error, "Fatal: Failed to delete file");
-    }
-
-    [Test]
-    public async Task DeleteFile_FailureDuringDeletion_PartialCleanupNotPerformed()
-    {
-        var worker = CreateCleanupWorker();
-        var now = DateTime.UtcNow;
-        var file = CreateTestFile(
-            storeType: StoreRequestType.Default,
-            uploadUtc: now.AddDays(-2)); // Expired
-        SetupTimeService(now);
-        SetupQuotaService(QuotaState.Nominal);
-
-        mockFileSystem.Setup(fs => fs.DeleteData(It.IsAny<Cid>()))
-            .ThrowsAsync(new IOException("Disk error"));
-
-        try
-        {
-            await worker.ProcessItem(file);
-        }
-        catch { }
-
-        mockFileSystem.Verify(fs => fs.DeleteObject(It.IsAny<Cid>()), Times.Never);
-        mockPresenceService.Verify(ps => ps.ClearPresence(It.IsAny<Cid>()), Times.Never);
-        mockQuotaService.Verify(qs => qs.RemoveUsedBytes(It.IsAny<long>()), Times.Never);
     }
 
     #endregion
@@ -571,7 +439,7 @@ public class CleanupWorkerTests
     {
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
-        
+
         // File with old upload but recent activity
         var file = CreateTestFile(
             storeType: StoreRequestType.Default,
@@ -584,7 +452,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     [Test]
@@ -592,7 +460,7 @@ public class CleanupWorkerTests
     {
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
-        
+
         // File with recent upload but old activity
         var file = CreateTestFile(
             storeType: StoreRequestType.TemporaryFile,
@@ -605,7 +473,7 @@ public class CleanupWorkerTests
 
         await worker.ProcessItem(file);
 
-        mockFileSystem.Verify(fs => fs.DeleteData(file.Cid), Times.Once);
+        mockDeleteService.Verify(fs => fs.DeleteFile(file), Times.Once);
     }
 
     #endregion

@@ -77,6 +77,7 @@ namespace ContentTower.Services
         private async Task FillQueue()
         {
             await fs.IterateObjects<FileMetadata>(queue.Add);
+            logger.LogTrace("Scheduled {0} items for evaluation.", queue.Count);
             await timeService.Sleep(longSleep, Ct);
         }
 
