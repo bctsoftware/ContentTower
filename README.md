@@ -35,7 +35,7 @@ Once you clone this repository, it should be as simple as `dotnet build` and `do
 
 ## Integration tests
 A few integration tests are built inside a docker container. You can use them to see how ContentTower is intended to be used.
-Once you clone this repository, go into `ContentTower.IntegrationTests` and run `docker-compose build ;; docker-compose up -d`.
+Once you clone this repository, go into `ContentTower.IntegrationTests` and run `docker-compose build` and `docker-compose up -d`.
 These tests might take a while.
 
 ## Found a problem?

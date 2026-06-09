@@ -37,21 +37,14 @@ namespace ContentTower.IntegrationTests
         {
             var tests = DiscoverTests();
 
-            var workers = StartTests(tests);
-
-            Task.WaitAll(workers);
+            foreach (var test in tests)
+            {
+                RunTest(test);
+                output.Log("");
+            }
 
             ProcessResults(tests);
             output.Log("Done!");
-        }
-
-        private IEnumerable<Task> StartTests(ITest[] tests)
-        {
-            foreach (var test in tests)
-            {
-                yield return Task.Run(() => RunTest(test));
-                Thread.Sleep(3000);
-            }
         }
 
         private void RunTest(ITest test)
