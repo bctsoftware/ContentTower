@@ -16,19 +16,35 @@ namespace ContentTower.IntegrationTests
         }
 
         public OptionsView Initialize()
-        { 
-            try
+        {
+            var tries = 5;
+            while (tries > 0)
             {
-                var config = On(api => api.ConfigAsync());
-                if (config.CleanupIntervalSeconds > 0)
+                try
                 {
-                    log.Log("ContentTower connection OK.");
-                    return config;
+                    return InitializeInternal();
                 }
+                catch (Exception ex)
+                {
+                    log.Log(ex.ToString());
+                }
+
+                Thread.Sleep(3000);
+                tries--;
             }
-            catch { }
             log.Log("Failed to connect to ContentTower.");
             throw new Exception("Failed to connect");
+        }
+
+        private OptionsView InitializeInternal()
+        {
+            var config = On(api => api.ConfigAsync());
+            if (config.CleanupIntervalSeconds > 0)
+            {
+                log.Log("ContentTower connection OK.");
+                return config;
+            }
+            throw new Exception("Invalid configuration received");
         }
 
         public Cid Upload(string name, string type, byte[] data, StoreRequestType storeType = StoreRequestType.Default)

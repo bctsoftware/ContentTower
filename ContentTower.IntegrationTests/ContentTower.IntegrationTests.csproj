@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <OpenApiReference Include="..\openapi.json" Link="OpenAPIs\openapi.json" Namespace="ContentTowerOpenAPIClient" />
+    <OpenApiReference Include=".\openapi.json" Link="OpenAPIs\openapi.json" Namespace="ContentTowerOpenAPIClient" />
   </ItemGroup>
 
   <ItemGroup>

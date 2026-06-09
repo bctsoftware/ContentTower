@@ -6,7 +6,7 @@ namespace ContentTower.IntegrationTests
     {
         public static void Main(string[] args)
         {
-            var ctAddress = "http://localhost:5000"; // Environment.GetEnvironmentVariable("ContentTowerEndpoint");
+            var ctAddress = Environment.GetEnvironmentVariable("ContentTowerEndpoint");
             if (string.IsNullOrEmpty(ctAddress)) throw new Exception("Missing environment variable 'ContentTowerEndpoint'");
 
             var output = new Output();

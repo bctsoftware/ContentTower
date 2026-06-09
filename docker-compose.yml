@@ -21,7 +21,7 @@ services:
       Logging__LogLevel__Default: Information
       Logging__LogLevel__Microsoft.AspNetCore: Warning
     volumes:
-      - contenttower_data:/app/data
+      - ./controltower_data:/app/data
     restart: unless-stopped
   
   integrationtests:
@@ -31,7 +31,3 @@ services:
     container_name: contenttowerintegrationtests
     environment:
       ContentTowerEndpoint: http://contenttower:8080
-      
-volumes:
-  contenttower_data:
-    driver: local

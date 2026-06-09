@@ -33,7 +33,6 @@ namespace ContentTower
         private static WebApplication BuildApp(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            builder.WebHost.UseUrls("http://0.0.0.0:5000");
             // System abstraction modules:
             builder.Services.AddSingleton<ITime, Time>();
             builder.Services.AddSingleton<IFileSystem, FileSystem>();
