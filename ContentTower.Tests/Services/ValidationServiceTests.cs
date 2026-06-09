@@ -179,7 +179,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithDefaultNominalTooShort_ThrowsExceptionWithDefaultNominalFault()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationDefaultNominalSeconds = 3599; // 1 second less than minimum (1 hour = 3600)
+        options.StoreDurationDefaultNominalSeconds = 59;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -201,7 +201,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithDefaultNominalEqualToMinimum_PassesValidation()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationDefaultNominalSeconds = 3600; // Exactly 1 hour
+        options.StoreDurationDefaultNominalSeconds = 60;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -223,7 +223,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithDefaultPressureTooShort_ThrowsExceptionWithDefaultPressureFault()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationDefaultPressureSeconds = 3599; // 1 second less than minimum
+        options.StoreDurationDefaultPressureSeconds = 59;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -245,7 +245,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithDefaultPressureEqualToMinimum_PassesValidation()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationDefaultPressureSeconds = 3600; // Exactly 1 hour
+        options.StoreDurationDefaultPressureSeconds = 60;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -267,7 +267,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithTemporaryNominalTooShort_ThrowsExceptionWithTemporaryNominalFault()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationTemporaryNominalSeconds = 3599; // 1 second less than minimum
+        options.StoreDurationTemporaryNominalSeconds = 19;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -289,7 +289,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithTemporaryNominalEqualToMinimum_PassesValidation()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationTemporaryNominalSeconds = 3600; // Exactly 1 hour
+        options.StoreDurationTemporaryNominalSeconds = 60;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -311,7 +311,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithTemporaryPressureTooShort_ThrowsExceptionWithTemporaryPressureFault()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationTemporaryPressureSeconds = 3599; // 1 second less than minimum
+        options.StoreDurationTemporaryPressureSeconds = 19;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -333,7 +333,7 @@ public class ValidationServiceTests
     public async Task ValidateOptions_WithTemporaryPressureEqualToMinimum_PassesValidation()
     {
         var options = CreateValidStorageOptions();
-        options.StoreDurationTemporaryPressureSeconds = 3600; // Exactly 1 hour
+        options.StoreDurationTemporaryPressureSeconds = 60;
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 
@@ -357,7 +357,7 @@ public class ValidationServiceTests
         var options = CreateValidStorageOptions();
         options.DataPath = string.Empty;
         options.Quota = 1000; // Too low
-        options.StoreDurationDefaultNominalSeconds = 1000; // Too low
+        options.StoreDurationDefaultNominalSeconds = 50; // Too low
         mockFileSystem.Setup(fs => fs.CheckCreateDir(It.IsAny<string>())).Returns(true);
         var service = CreateValidationService(options);
 

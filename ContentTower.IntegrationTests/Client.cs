@@ -40,8 +40,9 @@ namespace ContentTower.IntegrationTests
                 Data = data,
                 StoreType = storeType
             }));
-            log.Log($"Uploaded {data.Length} bytes '{name}' => {response.ContentId}");
-            return new Cid(response.ContentId);
+            var cid = new Cid(response.ContentId);
+            log.Log($"Uploaded {data.Length} bytes '{name}' => {cid}");
+            return cid;
         }
 
         public bool Check(Cid cid)
@@ -105,7 +106,7 @@ namespace ContentTower.IntegrationTests
 
         public override string ToString()
         {
-            return $"'{Hash.Substring(0, 5)}..{Hash.Last()}'";
+            return $"'{Hash.Substring(0, 5)}..{Hash.Substring(Hash.Length - 3)}'";
         }
     }
 }

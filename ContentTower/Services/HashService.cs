@@ -31,7 +31,7 @@ namespace ContentTower.Services
 
         public override string ToString()
         {
-            return $"'{Hash.Substring(0, 5)}..{Hash.Last()}'";
+            return $"'{Hash.Substring(0, 5)}..{Hash.Substring(Hash.Length - 3)}'";
         }
     }
 }
