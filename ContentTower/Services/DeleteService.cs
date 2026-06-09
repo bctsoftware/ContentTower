@@ -24,14 +24,14 @@ namespace ContentTower.Services
 
         public async Task DeleteFile(FileMetadata item)
         {
-            logger.LogTrace("Cleaning up {0}...", item.Cid);
+            logger.LogTrace("Deleting {0}...", item.Cid);
             try
             {
                 await fs.DeleteData(item.Cid);
                 await fs.DeleteObject(item.Cid);
                 presenceService.ClearPresence(item.Cid);
                 quotaService.RemoveUsedBytes(item.Length);
-                logger.LogTrace("Successfully cleaned up {0}.", item.Cid);
+                logger.LogInformation("Successfully deleted {0}.", item.Cid);
             }
             catch (Exception ex)
             {
