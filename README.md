@@ -56,3 +56,7 @@ Please Star and/or Watch this repository.
 ## Using ContentTower in your highly profitable and successful commercial venture?
 Please consider making a donation to support this small project. Reach out via my website contact information.
 
+## Releases
+
+### v0.0.1 - Initial release
+09-06-2026 - I'm sure there'll be a first-update soon.
