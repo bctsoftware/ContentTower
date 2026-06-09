@@ -121,7 +121,7 @@ public class DeleteServiceTests
     {
         await service.DeleteFile(file);
 
-        mockLogger.AssertLogged(LogLevel.Trace, $"Successfully cleaned up {file.Cid}.");
+        mockLogger.AssertLogged(LogLevel.Information, $"Successfully deleted {file.Cid}.");
     }
 
     [Test]

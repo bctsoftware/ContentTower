@@ -1,0 +1,33 @@
+services:
+  contenttower:
+    build:
+      context: ../ContentTower
+      dockerfile: Dockerfile
+    container_name: contenttower
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      
+      Storage__Quota: "1073741824"  # 1 GB in bytes
+      Storage__DataPath: "/app/data"
+      Storage__CleanupIntervalSeconds: "10"
+      Storage__StoreDurationDefaultNominalSeconds: "120"
+      Storage__StoreDurationDefaultPressureSeconds: "60"
+      Storage__StoreDurationTemporaryNominalSeconds: "40"
+      Storage__StoreDurationTemporaryPressureSeconds: "30"
+
+      Logging__LogLevel__Default: Trace
+      Logging__LogLevel__Microsoft.AspNetCore: Warning
+    volumes:
+      - ./controltower_data:/app/data
+    restart: unless-stopped
+  
+  integrationtests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contenttowerintegrationtests
+    environment:
+      ContentTowerEndpoint: http://contenttower:8080
