@@ -25,4 +25,4 @@ jobs:
       run: dotnet build --configuration Release --no-restore
     
     - name: Run tests
-      run: dotnet test ContentTower.Tests/ContentTower.Tests.csproj --configuration Release
+      run: dotnet test
