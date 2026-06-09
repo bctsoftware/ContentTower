@@ -1,6 +1,7 @@
 using ContentTower.Services;
 using ContentTower.System;
 using Microsoft.Extensions.Options;
+using Scalar.AspNetCore;
 
 namespace ContentTower
 {
@@ -16,6 +17,13 @@ namespace ContentTower
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
+                app.MapScalarApiReference(options =>
+                {
+                    options
+                        .WithTitle("ServerSide API")
+                        .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+                });
+                app.MapGet("/", () => Results.Redirect("/scalar/v1")).ExcludeFromDescription();
             }
             app.UseAuthorization();
             app.MapControllers();
@@ -41,6 +49,7 @@ namespace ContentTower
             builder.Services.AddSingleton<IValidationService, ValidationService>();
             // WebAPI:
             builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer(); // Required for OpenAPI generation
             builder.Services.AddOpenApi();
             builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
             return builder.Build();
