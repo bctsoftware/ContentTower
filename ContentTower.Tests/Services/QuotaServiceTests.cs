@@ -51,7 +51,7 @@ public class QuotaServiceTests
             Name = name,
             ContentType = "text/plain",
             Length = length,
-            StoreType = StoreRequestType.Default,
+            StoreType = StoreType.Default,
             UploadUtc = DateTime.UtcNow,
             LastActivityUtc = DateTime.UtcNow
         };

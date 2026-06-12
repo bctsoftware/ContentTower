@@ -41,7 +41,7 @@ public class DeleteServiceTests
     private FileMetadata CreateTestFile(
         string cidHash = "test-file",
         long length = 1000,
-        StoreRequestType storeType = StoreRequestType.Default,
+        StoreType storeType = StoreType.Default,
         DateTime? uploadUtc = null,
         DateTime? lastActivityUtc = null)
     {

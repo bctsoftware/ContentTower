@@ -55,7 +55,7 @@ public class CleanupServiceTests
     private FileMetadata CreateTestFile(
         string cidHash = "test-file-1",
         long length = 1000,
-        StoreRequestType storeType = StoreRequestType.Default)
+        StoreType storeType = StoreType.Default)
     {
         return new FileMetadata
         {

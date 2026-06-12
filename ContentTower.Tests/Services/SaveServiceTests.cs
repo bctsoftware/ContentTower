@@ -43,7 +43,7 @@ public class SaveServiceTests
     }
 
     private UploadRequest CreateValidUploadRequest(
-        StoreRequestType storeType = StoreRequestType.Default,
+        StoreType storeType = StoreType.Default,
         string name = "test-file.txt",
         string contentType = "text/plain",
         byte[]? data = null)
@@ -102,7 +102,7 @@ public class SaveServiceTests
     public async Task Handle_WithNewContent_CreatesMetadataWithCorrectProperties()
     {
         var request = CreateValidUploadRequest(
-            storeType: StoreRequestType.PermanentFile,
+            storeType: StoreType.PermanentFile,
             name: "my-file.pdf",
             contentType: "application/pdf"
         );
@@ -131,7 +131,7 @@ public class SaveServiceTests
         await Assert.That(capturedMetadata.Name).IsEqualTo("my-file.pdf");
         await Assert.That(capturedMetadata.ContentType).IsEqualTo("application/pdf");
         await Assert.That(capturedMetadata.Length).IsEqualTo(request.Data.Length);
-        await Assert.That(capturedMetadata.StoreType).IsEqualTo(StoreRequestType.PermanentFile);
+        await Assert.That(capturedMetadata.StoreType).IsEqualTo(StoreType.PermanentFile);
         await Assert.That(capturedMetadata.UploadUtc).IsEqualTo(fixedNow);
         await Assert.That(capturedMetadata.LastActivityUtc).IsEqualTo(fixedNow);
     }
@@ -272,7 +272,7 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WithTemporaryStoreType_SavesWithCorrectStoreType()
     {
-        var request = CreateValidUploadRequest(storeType: StoreRequestType.TemporaryFile);
+        var request = CreateValidUploadRequest(storeType: StoreType.TemporaryFile);
         var testCid = CreateTestCid();
         var fixedNow = GetFixedUtcNow();
         FileMetadata? capturedMetadata = null;
@@ -291,13 +291,13 @@ public class SaveServiceTests
         await service.Handle(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreRequestType.TemporaryFile);
+        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreType.TemporaryFile);
     }
 
     [Test]
     public async Task Handle_WithDefaultStoreType_SavesWithCorrectStoreType()
     {
-        var request = CreateValidUploadRequest(storeType: StoreRequestType.Default);
+        var request = CreateValidUploadRequest(storeType: StoreType.Default);
         var testCid = CreateTestCid();
         var fixedNow = GetFixedUtcNow();
         FileMetadata? capturedMetadata = null;
@@ -316,7 +316,7 @@ public class SaveServiceTests
         await service.Handle(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreRequestType.Default);
+        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreType.Default);
     }
 
     #endregion

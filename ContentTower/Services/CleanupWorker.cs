@@ -15,7 +15,7 @@ namespace ContentTower.Services
         private readonly IQuotaService quotaService;
         private readonly ITime timeService;
         private readonly IDeleteService deleteService;
-        private readonly Dictionary<QuotaState, Dictionary<StoreRequestType, Func<TimeSpan>>> timespanSelectors = new();
+        private readonly Dictionary<QuotaState, Dictionary<StoreType, Func<TimeSpan>>> timespanSelectors = new();
 
         public CleanupWorker(IOptions<StorageOptions> options, IQuotaService quotaService, ITime timeService, IDeleteService deleteService)
         {
@@ -33,7 +33,7 @@ namespace ContentTower.Services
 
         private async Task ProcessItemInternal(FileMetadata item)
         {
-            if (item.StoreType == StoreRequestType.PermanentFile) return;
+            if (item.StoreType == StoreType.PermanentFile) return;
 
             var state = quotaService.GetQuotaStatus().State;
             var span = timespanSelectors[state][item.StoreType]();
@@ -49,23 +49,23 @@ namespace ContentTower.Services
         {
             // Temporary files are measured from last-activity.
             // Default files are measure from upload.
-            if (item.StoreType == StoreRequestType.TemporaryFile) return item.LastActivityUtc;
-            if (item.StoreType == StoreRequestType.Default) return item.UploadUtc;
+            if (item.StoreType == StoreType.TemporaryFile) return item.LastActivityUtc;
+            if (item.StoreType == StoreType.Default) return item.UploadUtc;
             throw new InvalidOperationException("Attempt to get fileUTC for unknown store type: " + item.StoreType);
         }
 
         private void CreateTimespanSelectors()
         {
-            var nominalSet = new Dictionary<StoreRequestType, Func<TimeSpan>>();
-            var pressureSet = new Dictionary<StoreRequestType, Func<TimeSpan>>();
+            var nominalSet = new Dictionary<StoreType, Func<TimeSpan>>();
+            var pressureSet = new Dictionary<StoreType, Func<TimeSpan>>();
 
-            nominalSet.Add(StoreRequestType.Default, () => options.StoreDurationDefaultNominal);
-            nominalSet.Add(StoreRequestType.TemporaryFile, () => options.StoreDurationTemporaryNominal);
-            nominalSet.Add(StoreRequestType.PermanentFile, () => throw new InvalidOperationException("Attempt to get timespan for permanent file in nominal state."));
+            nominalSet.Add(StoreType.Default, () => options.StoreDurationDefaultNominal);
+            nominalSet.Add(StoreType.TemporaryFile, () => options.StoreDurationTemporaryNominal);
+            nominalSet.Add(StoreType.PermanentFile, () => throw new InvalidOperationException("Attempt to get timespan for permanent file in nominal state."));
 
-            pressureSet.Add(StoreRequestType.Default, () => options.StoreDurationDefaultPressure);
-            pressureSet.Add(StoreRequestType.TemporaryFile, () => options.StoreDurationTemporaryPressure);
-            pressureSet.Add(StoreRequestType.PermanentFile, () => throw new InvalidOperationException("Attempt to get timespan for permanent file in pressure state."));
+            pressureSet.Add(StoreType.Default, () => options.StoreDurationDefaultPressure);
+            pressureSet.Add(StoreType.TemporaryFile, () => options.StoreDurationTemporaryPressure);
+            pressureSet.Add(StoreType.PermanentFile, () => throw new InvalidOperationException("Attempt to get timespan for permanent file in pressure state."));
 
             timespanSelectors.Add(QuotaState.Nominal, nominalSet);
             timespanSelectors.Add(QuotaState.Pressure, pressureSet);

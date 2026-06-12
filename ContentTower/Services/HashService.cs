@@ -19,19 +19,4 @@ namespace ContentTower.Services
             return new Cid(CidPrefix + encoded);
         }
     }
-
-    public class Cid
-    {
-        public Cid(string hash)
-        {
-            Hash = hash;
-        }
-
-        public string Hash { get; set; } = string.Empty;
-
-        public override string ToString()
-        {
-            return $"'{Hash.Substring(0, 5)}..{Hash.Substring(Hash.Length - 3)}'";
-        }
-    }
 }

@@ -39,7 +39,7 @@ namespace ContentTower.Controllers
 
         [HttpGet]
         [Route("metadata/{cid}")]
-        public async Task<FileMetadata> Metadata([FromRoute] string cid)
+        public async Task<ContentView> Metadata([FromRoute] string cid)
         {
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
             var contentId = new Cid(cid);
@@ -68,5 +68,15 @@ namespace ContentTower.Controllers
         {
             return cid.StartsWith(HashService.CidPrefix);
         }
+    }
+
+    public class ContentView
+    {
+        public string Cid { get; set; } = string.Empty;
+        public string[] PinIds { get; set; } = Array.Empty<string>();
+
+        public string Name { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public long Length { get; set; }
     }
 }

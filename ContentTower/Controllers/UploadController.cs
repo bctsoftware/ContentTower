@@ -32,14 +32,27 @@ namespace ContentTower.Controllers
 
     public class UploadRequest
     {
-        public StoreRequestType StoreType { get; set; }
         public string Name { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
         public byte[] Data { get; set; } = Array.Empty<byte>();
+
+        public AttachToPinRequest? AttachPins { get; set; } = null;
+        public UploadCreatePinsRequest? CreateNewPins { get; set; } = null;
+    }
+
+    public class AttachToPinRequest
+    {
+        public string[] PinIds { get; set; } = Array.Empty<string>();
+    }
+
+    public class UploadCreatePinsRequest
+    {
+        public StoreType[] StoreTypes { get; set; } = Array.Empty<StoreType>();
     }
 
     public class UploadResponse
     {
-        public string ContentId { get; set; } = string.Empty;
+        public string Cid { get; set; } = string.Empty;
+        public string[] PinIds { get; set; } = Array.Empty<string>();
     }
 }
