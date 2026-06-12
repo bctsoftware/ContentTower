@@ -24,6 +24,7 @@ namespace ContentTower.Controllers
 
         [HttpGet]
         [Route("download/{cid}")]
+        [EndpointDescription("Downloads content as a stream.")]
         [ProducesResponseType<Stream>(StatusCodes.Status200OK, MediaTypeNames.Application.Octet)]
         public async Task<Stream> Download([FromRoute] string cid)
         {
@@ -39,6 +40,7 @@ namespace ContentTower.Controllers
 
         [HttpGet]
         [Route("metadata/{cid}")]
+        [EndpointDescription("Retrieves metadata for content.")]
         public async Task<ContentView> Metadata([FromRoute] string cid)
         {
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
@@ -49,6 +51,7 @@ namespace ContentTower.Controllers
 
         [HttpGet]
         [Route("check/{cid}")]
+        [EndpointDescription("Checks whether the content exists in this service.")]
         public async Task<bool> Check([FromRoute] string cid)
         {
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");

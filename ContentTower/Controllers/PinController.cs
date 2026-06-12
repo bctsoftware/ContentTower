@@ -19,29 +19,34 @@ namespace ContentTower.Controllers
         }
 
         [HttpPost]
+        [EndpointDescription("Creates a new pin and attaches it to the specified contents.")]
         public async Task<IActionResult> Create([FromBody] CreatePinRequest createPinRequest)
         {
         }
 
         [HttpPatch]
+        [EndpointDescription("Attached content to or detaches content from the specified pin.")]
         public async Task<IActionResult> Update([FromBody] UpdatePinRequest updatePinRequest)
         {
         }
 
         [HttpGet]
         [Route("{pinId}")]
+        [EndpointDescription("Retrieves pin details.")]
         public async Task<PinView> Get([FromRoute] string pinId)
         {
         }
 
         [HttpDelete]
         [Route("{pinId}")]
+        [EndpointDescription("Deletes a pin immediately. Not allowed for pins with StoreType 'Permanent'.")]
         public async Task<IActionResult> Delete([FromRoute] string pinId)
         {
         }
 
         [HttpDelete]
         [Route("force/{pinId}")]
+        [EndpointDescription("Deletes a pin immediately. Explicit override for pins with StoreType 'Permanent'.")]
         public async Task<IActionResult> DeleteForce([FromRoute] string pinId)
         {
         }

@@ -18,6 +18,7 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
+        [EndpointDescription("Retrieves current quota status information.")]
         public async Task<QuotaResponse> Get()
         {
             return quotaService.GetQuotaStatus();
@@ -25,6 +26,7 @@ namespace ContentTower.Controllers
 
         [HttpGet]
         [Route("config")]
+        [EndpointDescription("Retrieves ContentTower configuration information.")]
         public async Task<OptionsView> GetConfig()
         {
             return new OptionsView(options);
