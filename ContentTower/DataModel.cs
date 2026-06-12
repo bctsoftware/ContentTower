@@ -48,7 +48,7 @@ namespace ContentTower
     public class FileMetadata
     {
         public Cid Cid { get; set; } = new Cid(string.Empty);
-        public PinId[] PinIds { get; set; } = Array.Empty<PinId>();
+        public List<PinId> PinIds { get; set; } = new List<PinId>();
 
         public string Name { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
@@ -58,7 +58,7 @@ namespace ContentTower
     public class PinData
     {
         public PinId PinId { get; set; } = new PinId(string.Empty);
-        public Cid[] Cids { get; set; } = Array.Empty<Cid>();
+        public List<Cid> Cids { get; set; } = new List<Cid>();
 
         public StoreType StoreType { get; set; }
         public DateTime CreateUtc { get; set; }

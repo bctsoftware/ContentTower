@@ -11,15 +11,13 @@ namespace ContentTower.Controllers
     {
         private readonly IPresenceService presenceService;
         private readonly ILoadService loadService;
-        private readonly IFileSystem fs;
-        private readonly ITime timeService;
+        private readonly IPinService pinService;
 
-        public DownloadController(IPresenceService presenceService, ILoadService loadService, IFileSystem fs, ITime timeService)
+        public DownloadController(IPresenceService presenceService, ILoadService loadService, IPinService pinService)
         {
             this.presenceService = presenceService;
             this.loadService = loadService;
-            this.fs = fs;
-            this.timeService = timeService;
+            this.pinService = pinService;
         }
 
         [HttpGet]
@@ -46,7 +44,7 @@ namespace ContentTower.Controllers
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
             var contentId = new Cid(cid);
             if (!presenceService.IsPresent(contentId)) throw new BadHttpRequestException("Not found");
-            return await loadService.ReadMetadata(contentId);
+            return Map(await loadService.ReadMetadata(contentId));
         }
 
         [HttpGet]
@@ -61,10 +59,21 @@ namespace ContentTower.Controllers
             return true;
         }
 
+        private static ContentView Map(FileMetadata file)
+        {
+            return new ContentView
+            {
+                Cid = file.Cid.Id,
+                Name = file.Name,
+                ContentType = file.ContentType,
+                Length = file.Length,
+                PinIds = file.PinIds.Select(p => p.Id).ToArray()
+            };
+        }
+
         private async Task UpdateLastActivity(FileMetadata metadata)
         {
-            metadata.LastActivityUtc = timeService.UtcNow();
-            await fs.WriteObject(metadata.Cid, metadata);
+            await pinService.RegisterActivity(metadata.Cid);
         }
 
         private static bool IsValid(string cid)

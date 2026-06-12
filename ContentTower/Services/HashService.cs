@@ -9,7 +9,7 @@ namespace ContentTower.Services
 
     public class HashService : IHashService
     {
-        public static string CidPrefix = "ct";
+        public static readonly string CidPrefix = "ct";
 
         public Cid GetHash(byte[] data)
         {

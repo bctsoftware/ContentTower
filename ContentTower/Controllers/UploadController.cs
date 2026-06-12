@@ -20,6 +20,7 @@ namespace ContentTower.Controllers
 
         [HttpPost]
         [RequestSizeLimit(long.MaxValue)]
+        [EndpointDescription("Stores content in ContentTower. Creates new pins for the content if requested. Attaches existing pins to the content if requested.")]
         public async Task<UploadResponse> Upload(UploadRequest request)
         {
             if (quotaService.IsFull()) throw new BadHttpRequestException("Storage quota is full.");
@@ -33,7 +34,7 @@ namespace ContentTower.Controllers
                 data: request.Data
             ));
 
-            await pinService.Attach(cid, GetAttachPinIds(request));
+            await pinService.Attach(GetAttachPinIds(request), cid);
             var newPins = await pinService.Create(GetNewPinTypes(request), cid);
 
             return new UploadResponse
