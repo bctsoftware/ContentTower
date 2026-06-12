@@ -15,33 +15,58 @@ namespace ContentTower
         string Id { get; }
     }
 
-    public class Cid : IId
+    public class BaseId : IEquatable<BaseId?>, IId
     {
-        public Cid(string id)
+        public BaseId(string id)
         {
             Id = id;
         }
 
         public string Id { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as BaseId);
+        }
+
+        public bool Equals(BaseId? other)
+        {
+            return other is not null &&
+                   Id == other.Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Id);
+        }
 
         public override string ToString()
         {
             return $"'{Id.Substring(0, 5)}..{Id.Substring(Id.Length - 3)}'";
         }
-    }
 
-    public class PinId : IId
-    {
-        public PinId(string id)
+        public static bool operator ==(BaseId? left, BaseId? right)
         {
-            Id = id;
+            return EqualityComparer<BaseId>.Default.Equals(left, right);
         }
 
-        public string Id { get; set; }
-
-        public override string ToString()
+        public static bool operator !=(BaseId? left, BaseId? right)
         {
-            return $"'{Id}'";
+            return !(left == right);
+        }
+    }
+
+    public class Cid : BaseId
+    {
+        public Cid(string id) : base(id)
+        {
+        }
+    }
+
+    public class PinId : BaseId
+    {
+        public PinId(string id) : base(id)
+        {
         }
     }
 

@@ -7,72 +7,99 @@ namespace ContentTower.Controllers
     [Route("[controller]")]
     public class PinController : ControllerBase
     {
-        private readonly IPresenceService presenceService;
-        private readonly IDeleteService deleteService;
-        private readonly ILoadService loadService;
+        private readonly IPinService pinService;
 
-        public PinController(IPresenceService presenceService, IDeleteService deleteService, ILoadService loadService)
+        public PinController(IPinService pinService)
         {
-            this.presenceService = presenceService;
-            this.deleteService = deleteService;
-            this.loadService = loadService;
+            this.pinService = pinService;
         }
 
         [HttpPost]
         [EndpointDescription("Creates a new pin and attaches it to the specified contents.")]
-        public async Task<IActionResult> Create([FromBody] CreatePinRequest createPinRequest)
+        public string Create([FromBody] CreatePinRequest createPinRequest)
         {
-            throw new NotImplementedException();
+            var cids = Map(createPinRequest.Cids);
+            var pinId = pinService.Create(createPinRequest.StoreType, cids);
+            return pinId.Id;
         }
 
         [HttpPatch]
         [EndpointDescription("Attached content to or detaches content from the specified pin.")]
-        public async Task<IActionResult> Update([FromBody] UpdatePinRequest updatePinRequest)
+        public void Update([FromBody] UpdatePinRequest updatePinRequest)
         {
-            throw new NotImplementedException();
+            if (!IsValidPinId(updatePinRequest.PinId)) throw new BadHttpRequestException($"Invalid PinId: '{updatePinRequest.PinId}'.");
+
+            var pinId = new PinId(updatePinRequest.PinId);
+            var toAdd = Map(updatePinRequest.AddCids);
+            var toRemove = Map(updatePinRequest.RemoveCids);
+
+            pinService.Attach(pinId, toAdd);
+            pinService.Detach(pinId, toRemove);
         }
 
         [HttpGet]
         [Route("{pinId}")]
         [EndpointDescription("Retrieves pin details.")]
-        public async Task<PinView> Get([FromRoute] string pinId)
+        public PinView Get([FromRoute] string pinId)
         {
-            throw new NotImplementedException();
+            if (!IsValidPinId(pinId)) throw new BadHttpRequestException($"Invalid PinId: '{pinId}'.");
+            var pid = new PinId(pinId);
+            return Map(pinService.Get(pid));
         }
 
         [HttpDelete]
         [Route("{pinId}")]
         [EndpointDescription("Deletes a pin immediately. Not allowed for pins with StoreType 'Permanent'.")]
-        public async Task<IActionResult> Delete([FromRoute] string pinId)
+        public void Delete([FromRoute] string pinId)
         {
-            throw new NotImplementedException();
+            if (!IsValidPinId(pinId)) throw new BadHttpRequestException($"Invalid PinId: '{pinId}'.");
+            var pid = new PinId(pinId);
+            DeleteInternal(pid, force: false);
         }
 
         [HttpDelete]
         [Route("force/{pinId}")]
         [EndpointDescription("Deletes a pin immediately. Explicit override for pins with StoreType 'Permanent'.")]
-        public async Task<IActionResult> DeleteForce([FromRoute] string pinId)
+        public void DeleteForce([FromRoute] string pinId)
         {
-            throw new NotImplementedException();
+            if (!IsValidPinId(pinId)) throw new BadHttpRequestException($"Invalid PinId: '{pinId}'.");
+            var pid = new PinId(pinId);
+            DeleteInternal(pid, force: true);
         }
 
-        private async Task<IActionResult> DeleteInternal(Cid cid, bool force)
+        private static PinView Map(PinData pinData)
         {
-            //if (!presenceService.IsPresent(cid)) return NotFound();
-
-            //var metadata = await loadService.ReadMetadata(cid);
-            //if (metadata.StoreType == StoreType.PermanentFile && !force)
-            //{
-            //    return BadRequest("Cannot delete permanent file.");
-            //}
-
-            //await deleteService.DeleteFile(metadata);
-            return Ok();
+            return new PinView
+            {
+                PinId = pinData.PinId.Id,
+                StoreType = pinData.StoreType,
+                CreateUtc = pinData.CreateUtc,
+                LastActivityUtc = pinData.LastActivityUtc,
+                Cids = pinData.Cids.Select(c => c.Id).ToArray()
+            };
         }
 
-        private static bool IsValid(string cid)
+        private void DeleteInternal(PinId pinId, bool force)
+        {
+            var pin = pinService.Get(pinId);
+            if (pin.StoreType == StoreType.PermanentFile && !force) throw new BadHttpRequestException("Cannot delete permanent file.");
+            pinService.Delete(pinId);
+        }
+
+        private static Cid[] Map(string[] cids)
+        {
+            foreach (var c in cids) if (!IsValidCid(c)) throw new BadHttpRequestException($"Invalid CID: '{c}'.");
+            return cids.Select(c => new Cid(c)).ToArray();
+        }
+
+        private static bool IsValidCid(string cid)
         {
             return cid.StartsWith(HashService.CidPrefix);
+        }
+
+        private static bool IsValidPinId(string pinId)
+        {
+            return pinId.StartsWith(PinService.PinIdPrefix);
         }
     }
 

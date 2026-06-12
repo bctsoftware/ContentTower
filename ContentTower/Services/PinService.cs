@@ -5,9 +5,14 @@ namespace ContentTower.Services
     public interface IPinService
     {
         void Attach(PinId[] pinIds, Cid cid);
+        void Attach(PinId pinId, Cid[] cids);
+        void Detach(PinId pinId, Cid[] cids);
+        PinId Create(StoreType type, Cid[] cids);
         PinId[] Create(StoreType[] types, Cid cid);
         bool Exists(PinId pinId);
         void RegisterActivity(Cid cid);
+        PinData Get(PinId pinId);
+        void Delete(PinId pinId);
     }
 
     public class PinService : IPinService
@@ -34,12 +39,37 @@ namespace ContentTower.Services
             logger.LogInformation("Attached pins {0} to cid {1}", pinIds, cid);
         }
 
+        public void Attach(PinId pinId, Cid[] cids)
+        {
+            AddCidsToPin(pinId, cids);
+            foreach (var cid in cids)
+            {
+                AddPinToCid(pinId, cid);
+            }
+            logger.LogInformation("Attached pin {0} to cids {1}", pinId, cids);
+        }
+
+        public void Detach(PinId pinId, Cid[] cids)
+        {
+            RemoveCidsFromPin(pinId, cids);
+            foreach (var cid in cids)
+            {
+                RemovePinFromCid(pinId, cid);
+            }
+            logger.LogInformation("Detached pin {0} from cids {1}", pinId, cids);
+        }
+
+        public PinId Create(StoreType type, Cid[] cids)
+        {
+            return CreateNewPin(type, cids);
+        }
+
         public PinId[] Create(StoreType[] types, Cid cid)
         {
             var result = new List<PinId>();
             foreach (var type in types)
             {
-                result.Add(CreateNewPin(type, cid));
+                result.Add(CreateNewPin(type, [cid]));
             }
             return result.ToArray();
         }
@@ -58,17 +88,34 @@ namespace ContentTower.Services
             }
         }
 
-        private PinId CreateNewPin(StoreType type, Cid cid)
+        public PinData Get(PinId pinId)
+        {
+            return objectStoreService.ReadObject<PinData>(pinId);
+        }
+
+        public void Delete(PinId pinId)
+        {
+            var pin = Get(pinId);
+            foreach (var cid in pin.Cids)
+            {
+                RemovePinFromCid(pinId, cid);
+            }
+            objectStoreService.DeleteObject(pinId);
+            logger.LogInformation("Deleted pin {0} from {1} contents.", pinId, pin.Cids.Count);
+        }
+
+        private PinId CreateNewPin(StoreType type, Cid[] cids)
         {
             var pinId = CreateNewPinId();
             objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
             {
                 pin.PinId = pinId;
-                pin.Cids = new List<Cid> { cid };
+                pin.Cids = cids.ToList();
                 pin.CreateUtc = timeService.UtcNow();
                 pin.LastActivityUtc = timeService.UtcNow();
                 pin.StoreType = type;
             });
+            logger.LogInformation("Created new pin {0} for {1} contents.", pinId, cids.Length);
             return pinId;
         }
 
@@ -93,6 +140,22 @@ namespace ContentTower.Services
             }
         }
 
+        private void AddCidsToPin(PinId pinId, Cid[] cids)
+        {
+            try
+            {
+                objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
+                {
+                    pin.Cids.AddRange(cids);
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to add cids {0} to pin {1}.", cids, pinId);
+                throw;
+            }
+        }
+
         private void AddCidToPin(PinId pinId, Cid cid)
         {
             try
@@ -105,6 +168,54 @@ namespace ContentTower.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to add cid {0} to pin {1}.", cid, pinId);
+                throw;
+            }
+        }
+
+        private void AddPinToCid(PinId pinId, Cid cid)
+        {
+            try
+            {
+                objectStoreService.CreateOrUpdateObject<FileMetadata>(cid, file =>
+                {
+                    file.PinIds.Add(pinId);
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to add pin {0} to cid {1}.", pinId, cid);
+                throw;
+            }
+        }
+
+        private void RemovePinFromCid(PinId pinId, Cid cid)
+        {
+            try
+            {
+                objectStoreService.CreateOrUpdateObject<FileMetadata>(cid, file =>
+                {
+                    file.PinIds.Remove(pinId);
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to remove pin {0} from cid {1}.", pinId, cid);
+                throw;
+            }
+        }
+
+        private void RemoveCidsFromPin(PinId pinId, Cid[] cids)
+        {
+            try
+            {
+                objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
+                {
+                    foreach (var c in cids) pin.Cids.Remove(c);
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to remove cids {0} from pin {1}.", cids, pinId);
                 throw;
             }
         }
