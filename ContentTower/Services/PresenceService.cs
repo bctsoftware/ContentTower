@@ -22,10 +22,10 @@ namespace ContentTower.Services
 
         public bool IsPresent(Cid cid)
         {
-            if (exists.Contains(cid.Hash)) return true;
+            if (exists.Contains(cid.Id)) return true;
             if (ExistsOnFs(cid))
             {
-                exists.Add(cid.Hash);
+                exists.Add(cid.Id);
                 return true;
             }
             return false;
@@ -33,16 +33,16 @@ namespace ContentTower.Services
 
         public void ClearPresence(Cid cid)
         {
-            doesntExist.Add(cid.Hash);
-            exists.Remove(cid.Hash);
+            doesntExist.Add(cid.Id);
+            exists.Remove(cid.Id);
 
             CheckCaches();
         }
 
         public void SetPresence(Cid cid)
         {
-            exists.Add(cid.Hash);
-            doesntExist.Remove(cid.Hash);
+            exists.Add(cid.Id);
+            doesntExist.Remove(cid.Id);
 
             CheckCaches();
         }

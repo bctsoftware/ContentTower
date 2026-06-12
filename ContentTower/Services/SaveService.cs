@@ -1,11 +1,24 @@
-﻿using ContentTower.Controllers;
-using ContentTower.System;
+﻿using ContentTower.System;
 
 namespace ContentTower.Services
 {
     public interface ISaveService
     {
-        Task<Cid> Handle(UploadRequest request);
+        Task<Cid> Save(SaveRequest request);
+    }
+
+    public class SaveRequest
+    {
+        public SaveRequest(string name, string contentType, byte[] data)
+        {
+            Name = name;
+            ContentType = contentType;
+            Data = data;
+        }
+
+        public string Name { get; }
+        public string ContentType { get; }
+        public byte[] Data { get; }
     }
 
     public class SaveService : ISaveService
@@ -15,19 +28,17 @@ namespace ContentTower.Services
         private readonly IHashService hashService;
         private readonly IPresenceService presenceService;
         private readonly IQuotaService quotaService;
-        private readonly ITime timeService;
 
-        public SaveService(ILogger<SaveService> logger, IFileSystem fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService, ITime timeService)
+        public SaveService(ILogger<SaveService> logger, IFileSystem fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService)
         {
             this.logger = logger;
             this.fs = fs;
             this.hashService = hashService;
             this.presenceService = presenceService;
             this.quotaService = quotaService;
-            this.timeService = timeService;
         }
 
-        public async Task<Cid> Handle(UploadRequest request)
+        public async Task<Cid> Save(SaveRequest request)
         {
             logger.LogTrace($"Handling request...");
             var cid = hashService.GetHash(request.Data);
@@ -40,12 +51,10 @@ namespace ContentTower.Services
             var metadata = new FileMetadata
             {
                 Cid = cid,
+                PinIds = Array.Empty<PinId>(),
                 Name = request.Name,
                 ContentType = request.ContentType,
                 Length = request.Data.Length,
-                StoreType = request.StoreType,
-                UploadUtc = timeService.UtcNow(),
-                LastActivityUtc = timeService.UtcNow(),
             };
             await fs.WriteObject(cid, metadata);
 

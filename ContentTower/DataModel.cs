@@ -10,22 +10,27 @@ namespace ContentTower
         PermanentFile
     }
 
-    public class Cid
+    public interface IId
     {
-        public Cid(string hash)
+        string Id { get; }
+    }
+
+    public class Cid : IId
+    {
+        public Cid(string id)
         {
-            Hash = hash;
+            Id = id;
         }
 
-        public string Hash { get; set; }
+        public string Id { get; set; }
 
         public override string ToString()
         {
-            return $"'{Hash.Substring(0, 5)}..{Hash.Substring(Hash.Length - 3)}'";
+            return $"'{Id.Substring(0, 5)}..{Id.Substring(Id.Length - 3)}'";
         }
     }
 
-    public class PinId
+    public class PinId : IId
     {
         public PinId(string id)
         {
@@ -36,7 +41,7 @@ namespace ContentTower
 
         public override string ToString()
         {
-            return $"[p{Id}]";
+            return $"'{Id}'";
         }
     }
 

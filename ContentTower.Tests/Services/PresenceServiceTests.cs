@@ -402,7 +402,7 @@ public class PresenceServiceTests
 
         service.IsPresent(cid);
 
-        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Hash == cid.Hash)), Times.Once);
+        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid.Id)), Times.Once);
     }
 
     [Test]
@@ -416,8 +416,8 @@ public class PresenceServiceTests
         service.IsPresent(cid1);
         service.IsPresent(cid2);
 
-        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Hash == cid1.Hash)), Times.Once);
-        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Hash == cid2.Hash)), Times.Once);
+        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid1.Id)), Times.Once);
+        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid2.Id)), Times.Once);
     }
 
     #endregion

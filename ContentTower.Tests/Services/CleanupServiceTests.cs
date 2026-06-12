@@ -234,9 +234,9 @@ public class CleanupServiceTests
         await Task.Delay(300);
 
         await Assert.That(processedItems.Count).IsEqualTo(3);
-        await Assert.That(processedItems[0].Cid.Hash).IsEqualTo(files[0].Cid.Hash);
-        await Assert.That(processedItems[1].Cid.Hash).IsEqualTo(files[1].Cid.Hash);
-        await Assert.That(processedItems[2].Cid.Hash).IsEqualTo(files[2].Cid.Hash);
+        await Assert.That(processedItems[0].Cid.Id).IsEqualTo(files[0].Cid.Id);
+        await Assert.That(processedItems[1].Cid.Id).IsEqualTo(files[1].Cid.Id);
+        await Assert.That(processedItems[2].Cid.Id).IsEqualTo(files[2].Cid.Id);
     }
 
     [Test]

@@ -9,11 +9,13 @@ namespace ContentTower.Controllers
     {
         private readonly ISaveService saveService;
         private readonly IQuotaService quotaService;
+        private readonly IPinService pinService;
 
-        public UploadController(ISaveService saveService, IQuotaService quotaService)
+        public UploadController(ISaveService saveService, IQuotaService quotaService, IPinService pinService)
         {
             this.saveService = saveService;
             this.quotaService = quotaService;
+            this.pinService = pinService;
         }
 
         [HttpPost]
@@ -22,11 +24,59 @@ namespace ContentTower.Controllers
         {
             if (quotaService.IsFull()) throw new BadHttpRequestException("Storage quota is full.");
 
-            var cid = await saveService.Handle(request);
+            var errors = GetPinningInstructionErrors(request);
+            if (!string.IsNullOrEmpty(errors)) throw new BadHttpRequestException(errors);
+
+            var cid = await saveService.Save(new SaveRequest(
+                name: request.Name,
+                contentType: request.ContentType,
+                data: request.Data
+            ));
+
+            await pinService.Attach(cid, GetAttachPinIds(request));
+            var newPins = await pinService.Create(GetNewPinTypes(request), cid);
+
             return new UploadResponse
             {
-                ContentId = cid.Hash
+                Cid = cid.Id,
+                NewPinIds = newPins.Select(p => p.Id).ToArray()
             };
+        }
+
+        private StoreType[] GetNewPinTypes(UploadRequest request)
+        {
+            if (request.CreateNewPins == null) return Array.Empty<StoreType>();
+            return request.CreateNewPins;
+        }
+
+        private PinId[] GetAttachPinIds(UploadRequest request)
+        {
+            if (request.AttachExistingPinIds == null) return Array.Empty<PinId>();
+            return request.AttachExistingPinIds.Select(p => new PinId(p)).ToArray();
+        }
+
+        private string GetPinningInstructionErrors(UploadRequest request)
+        {
+            if (
+                (request.AttachExistingPinIds == null || request.AttachExistingPinIds.Length == 0) &&
+                (request.CreateNewPins == null || request.CreateNewPins.Length == 0)
+            )
+            {
+                return $"Both '{nameof(UploadRequest.AttachExistingPinIds)}' and '{nameof(UploadRequest.CreateNewPins)}' are null or empty. You must provide at least one. " +
+                    $"The new content must be attached to at least 1 pin.";
+            }
+            return GetAttachPinsErrors(request.AttachExistingPinIds);
+        }
+
+        private string GetAttachPinsErrors(string[]? pinIds)
+        {
+            var result = string.Empty;
+            if (pinIds == null) return result;
+            foreach (var pin in pinIds)
+            {
+                if (!pinService.Exists(new PinId(pin))) result += $" pinId '{pin}' does not exist.";
+            }
+            return result;
         }
     }
 
@@ -36,23 +86,13 @@ namespace ContentTower.Controllers
         public string ContentType { get; set; } = string.Empty;
         public byte[] Data { get; set; } = Array.Empty<byte>();
 
-        public AttachToPinRequest? AttachPins { get; set; } = null;
-        public UploadCreatePinsRequest? CreateNewPins { get; set; } = null;
-    }
-
-    public class AttachToPinRequest
-    {
-        public string[] PinIds { get; set; } = Array.Empty<string>();
-    }
-
-    public class UploadCreatePinsRequest
-    {
-        public StoreType[] StoreTypes { get; set; } = Array.Empty<StoreType>();
+        public string[] AttachExistingPinIds { get; set; } = Array.Empty<string>();
+        public StoreType[] CreateNewPins { get; set; } = Array.Empty<StoreType>();
     }
 
     public class UploadResponse
     {
         public string Cid { get; set; } = string.Empty;
-        public string[] PinIds { get; set; } = Array.Empty<string>();
+        public string[] NewPinIds { get; set; } = Array.Empty<string>();
     }
 }

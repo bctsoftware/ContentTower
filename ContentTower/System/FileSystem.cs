@@ -1,19 +1,18 @@
-﻿using ContentTower.Services;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace ContentTower.System
 {
     public interface IFileSystem
     {
-        Task WriteObject<T>(Cid cid, T obj);
-        Task WriteData(Cid cid, byte[] data);
-        Task<T> ReadObject<T>(Cid cid);
-        Task<Stream> ReadData(Cid cid);
-        Task DeleteObject(Cid cid);
-        Task DeleteData(Cid cid);
+        Task WriteObject<T>(IId id, T obj);
+        Task WriteData(IId id, byte[] data);
+        Task<T> ReadObject<T>(IId id);
+        Task<Stream> ReadData(IId id);
+        Task DeleteObject(IId id);
+        Task DeleteData(IId id);
         Task IterateObjects<T>(Action<T> onObject);
-        bool Exists(Cid cid);
+        bool Exists(IId id);
         bool CheckCreateDir(string dataPath);
     }
 
@@ -35,21 +34,21 @@ namespace ContentTower.System
             return Directory.Exists(path);
         }
 
-        public async Task DeleteData(Cid cid)
+        public async Task DeleteData(IId id)
         {
-            File.Delete(GetDataFilepath(cid));
+            File.Delete(GetDataFilepath(id));
         }
 
-        public async Task DeleteObject(Cid cid)
+        public async Task DeleteObject(IId id)
         {
-            File.Delete(GetJsonFilepath(cid));
+            File.Delete(GetJsonFilepath(id));
         }
 
-        public bool Exists(Cid cid)
+        public bool Exists(IId id)
         {
             return
-                File.Exists(GetJsonFilepath(cid)) &&
-                File.Exists(GetDataFilepath(cid));
+                File.Exists(GetJsonFilepath(id)) &&
+                File.Exists(GetDataFilepath(id));
         }
 
         public async Task IterateObjects<T>(Action<T> onObject)
@@ -64,26 +63,26 @@ namespace ContentTower.System
             }
         }
 
-        public async Task<Stream> ReadData(Cid cid)
+        public async Task<Stream> ReadData(IId id)
         {
-            return File.OpenRead(GetDataFilepath(cid));
+            return File.OpenRead(GetDataFilepath(id));
         }
 
-        public async Task<T> ReadObject<T>(Cid cid)
+        public async Task<T> ReadObject<T>(IId id)
         {
-            var obj = GetJson<T>(GetJsonFilepath(cid));
-            if (obj == null) throw new Exception("Failed to load object for " + cid);
+            var obj = GetJson<T>(GetJsonFilepath(id));
+            if (obj == null) throw new Exception("Failed to load object for " + id);
             return obj;
         }
 
-        public async Task WriteData(Cid cid, byte[] data)
+        public async Task WriteData(IId id, byte[] data)
         {
-            File.WriteAllBytes(GetDataFilepath(cid), data);
+            File.WriteAllBytes(GetDataFilepath(id), data);
         }
 
-        public async Task WriteObject<T>(Cid cid, T obj)
+        public async Task WriteObject<T>(IId id, T obj)
         {
-            File.WriteAllText(GetJsonFilepath(cid), JsonConvert.SerializeObject(obj));
+            File.WriteAllText(GetJsonFilepath(id), JsonConvert.SerializeObject(obj));
         }
 
         private void TryJson<T>(string file, Action<T> onObject)
@@ -104,16 +103,16 @@ namespace ContentTower.System
             return JsonConvert.DeserializeObject<T>(File.ReadAllText(file));
         }
 
-        private string GetJsonFilepath(Cid cid)
+        private string GetJsonFilepath(IId id)
         {
-            if (string.IsNullOrEmpty(cid.Hash)) throw new Exception("Invalid CID");
-            return Path.Combine(options.DataPath, cid.Hash + ".json");
+            if (string.IsNullOrEmpty(id.Id)) throw new Exception("Invalid CID");
+            return Path.Combine(options.DataPath, id.Id + ".json");
         }
 
-        private string GetDataFilepath(Cid cid)
+        private string GetDataFilepath(IId id)
         {
-            if (string.IsNullOrEmpty(cid.Hash)) throw new Exception("Invalid CID");
-            return Path.Combine(options.DataPath, cid.Hash + ".data");
+            if (string.IsNullOrEmpty(id.Id)) throw new Exception("Invalid CID");
+            return Path.Combine(options.DataPath, id.Id + ".data");
         }
     }
 }

@@ -88,9 +88,9 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = await service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
         mockHashService.Verify(hs => hs.GetHash(request.Data), Times.Once);
         mockFileSystem.Verify(fs => fs.WriteObject(testCid, It.IsAny<FileMetadata>()), Times.Once);
         mockFileSystem.Verify(fs => fs.WriteData(testCid, request.Data), Times.Once);
@@ -124,10 +124,10 @@ public class SaveServiceTests
             .Callback<Cid, FileMetadata>((cid, metadata) => capturedMetadata = metadata)
             .Returns(Task.CompletedTask);
 
-        await service.Handle(request);
+        await service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.Cid.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(capturedMetadata!.Cid.Id).IsEqualTo(testCid.Id);
         await Assert.That(capturedMetadata.Name).IsEqualTo("my-file.pdf");
         await Assert.That(capturedMetadata.ContentType).IsEqualTo("application/pdf");
         await Assert.That(capturedMetadata.Length).IsEqualTo(request.Data.Length);
@@ -151,9 +151,9 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = await service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
         mockFileSystem.Verify(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()), Times.Never);
         mockFileSystem.Verify(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()), Times.Never);
         mockPresenceService.Verify(ps => ps.SetPresence(It.IsAny<Cid>()), Times.Never);
@@ -187,7 +187,7 @@ public class SaveServiceTests
         Exception? thrownException = null;
         try
         {
-            await service.Handle(request);
+            await service.Save(request);
         }
         catch (Exception ex)
         {
@@ -220,7 +220,7 @@ public class SaveServiceTests
 
         try
         {
-            await service.Handle(request);
+            await service.Save(request);
         }
         catch
         {
@@ -254,7 +254,7 @@ public class SaveServiceTests
         Exception? thrownException = null;
         try
         {
-            await service.Handle(request);
+            await service.Save(request);
         }
         catch (Exception ex)
         {
@@ -288,7 +288,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
         await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreType.TemporaryFile);
@@ -313,7 +313,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
         await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreType.Default);
@@ -341,7 +341,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         mockQuotaService.Verify(qs => qs.AddUsedBytes(10 * 1024 * 1024), Times.Once);
     }
@@ -364,9 +364,9 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = await service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(1), Times.Once);
     }
 
@@ -400,7 +400,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         await Assert.That(callOrder[0]).IsEqualTo("GetHash");
         await Assert.That(callOrder[1]).IsEqualTo("IsPresent");
@@ -427,9 +427,9 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = await service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
         mockFileSystem.Verify(fs => fs.WriteData(testCid, Array.Empty<byte>()), Times.Once);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(0), Times.Once);
     }
@@ -458,7 +458,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
         await Assert.That(capturedMetadata!.Name).IsEqualTo(customName);
@@ -484,7 +484,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
         await Assert.That(capturedMetadata!.ContentType).IsEqualTo(customContentType);
@@ -512,7 +512,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         mockHashService.Verify(hs => hs.GetHash(testData), Times.Once);
     }
@@ -535,7 +535,7 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        await service.Save(request);
 
         mockFileSystem.Verify(fs => fs.WriteData(testCid, testData), Times.Once);
     }
