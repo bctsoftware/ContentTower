@@ -64,6 +64,8 @@ namespace ContentTower.Services
 
         private async Task Step()
         {
+        todo: completely rebuild the cleanup and delete services
+
             if (queue.Count == 0) await FillQueue();
             else
             {
