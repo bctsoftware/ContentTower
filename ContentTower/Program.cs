@@ -12,7 +12,7 @@ namespace ContentTower
             var app = BuildApp(args);
 
             InitializeOptions(app);
-            await InitializeServices(app);
+            InitializeServices(app);
 
             if (app.Environment.IsDevelopment())
             {
@@ -54,9 +54,9 @@ namespace ContentTower
             return builder.Build();
         }
 
-        private static async Task InitializeServices(WebApplication app)
+        private static void InitializeServices(WebApplication app)
         {
-            await Get<IQuotaService>(app).Initialize();
+            Get<IQuotaService>(app).Initialize();
             Get<ICleanupService>(app).Start();
         }
 

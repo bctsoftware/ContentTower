@@ -1,12 +1,11 @@
 ﻿using ContentTower.Controllers;
-using ContentTower.System;
 using Microsoft.Extensions.Options;
 
 namespace ContentTower.Services
 {
     public interface IQuotaService
     {
-        Task Initialize();
+        void Initialize();
         QuotaResponse GetQuotaStatus();
         bool IsFull();
         void AddUsedBytes(long bytes);
@@ -17,18 +16,18 @@ namespace ContentTower.Services
     {
         private readonly QuotaResponse status = new QuotaResponse();
         private readonly IOptions<StorageOptions> options;
-        private readonly IFileSystem fs;
+        private readonly IObjectStoreService objectStoreService;
         private readonly ILogger<QuotaService> logger;
         private long nominalLimit = 0;
 
-        public QuotaService(ILogger<QuotaService> logger, IOptions<StorageOptions> options, IFileSystem fs)
+        public QuotaService(ILogger<QuotaService> logger, IOptions<StorageOptions> options, IObjectStoreService objectStoreService)
         {
             this.logger = logger;
             this.options = options;
-            this.fs = fs;
+            this.objectStoreService = objectStoreService;
         }
 
-        public async Task Initialize()
+        public void Initialize()
         {
             logger.LogInformation("Initializing...");
 
@@ -39,7 +38,7 @@ namespace ContentTower.Services
             double q = status.Quota;
             nominalLimit = Convert.ToInt64(q * 0.8);
 
-            await fs.IterateObjects<FileMetadata>(CountUpUsedBytes);
+            objectStoreService.IterateObjects<FileMetadata>(CountUpUsedBytes);
 
             UpdateState();
 

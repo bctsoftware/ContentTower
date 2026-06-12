@@ -1,10 +1,8 @@
-﻿using ContentTower.System;
-
-namespace ContentTower.Services
+﻿namespace ContentTower.Services
 {
     public interface ISaveService
     {
-        Task<Cid> Save(SaveRequest request);
+        Cid Save(SaveRequest request);
     }
 
     public class SaveRequest
@@ -24,21 +22,23 @@ namespace ContentTower.Services
     public class SaveService : ISaveService
     {
         private readonly ILogger<SaveService> logger;
-        private readonly IFileSystem fs;
+        private readonly IObjectStoreService objectStoreService;
+        private readonly IDataStoreService dataStoreService;
         private readonly IHashService hashService;
         private readonly IPresenceService presenceService;
         private readonly IQuotaService quotaService;
 
-        public SaveService(ILogger<SaveService> logger, IFileSystem fs, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService)
+        public SaveService(ILogger<SaveService> logger, IObjectStoreService objectStoreService, IDataStoreService dataStoreService, IHashService hashService, IPresenceService presenceService, IQuotaService quotaService)
         {
             this.logger = logger;
-            this.fs = fs;
+            this.objectStoreService = objectStoreService;
+            this.dataStoreService = dataStoreService;
             this.hashService = hashService;
             this.presenceService = presenceService;
             this.quotaService = quotaService;
         }
 
-        public async Task<Cid> Save(SaveRequest request)
+        public Cid Save(SaveRequest request)
         {
             logger.LogTrace($"Handling request...");
             var cid = hashService.GetHash(request.Data);
@@ -48,19 +48,18 @@ namespace ContentTower.Services
                 return cid;
             }
 
-            var metadata = new FileMetadata
+            objectStoreService.CreateOrUpdateObject<FileMetadata>(cid, file =>
             {
-                Cid = cid,
-                PinIds = Array.Empty<PinId>(),
-                Name = request.Name,
-                ContentType = request.ContentType,
-                Length = request.Data.Length,
-            };
-            await fs.WriteObject(cid, metadata);
+                file.Cid = cid;
+                file.PinIds = new List<PinId>();
+                file.Name = request.Name;
+                file.ContentType = request.ContentType;
+                file.Length = request.Data.Length;
+            });
 
             try
             {
-                await fs.WriteData(cid, request.Data);
+                dataStoreService.WriteData(cid, request.Data);
                 logger.LogInformation("Saved new content for {0}.", cid);
                 presenceService.SetPresence(cid);
                 quotaService.AddUsedBytes(request.Data.Length);
@@ -69,7 +68,7 @@ namespace ContentTower.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to save content for {0}.", cid);
-                await fs.DeleteObject(cid);
+                objectStoreService.DeleteObject(cid);
                 throw;
             }
         }

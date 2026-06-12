@@ -1,6 +1,4 @@
-﻿using ContentTower.System;
-
-namespace ContentTower.Services
+﻿namespace ContentTower.Services
 {
     public interface IPresenceService
     {
@@ -13,11 +11,13 @@ namespace ContentTower.Services
     {
         private readonly HashSet<string> exists = new HashSet<string>();
         private readonly HashSet<string> doesntExist = new HashSet<string>();
-        private readonly IFileSystem fs;
+        private readonly IDataStoreService dataStoreService;
+        private readonly IObjectStoreService objectStoreService;
 
-        public PresenceService(IFileSystem fs)
+        public PresenceService(IDataStoreService dataStoreService, IObjectStoreService objectStoreService)
         {
-            this.fs = fs;
+            this.dataStoreService = dataStoreService;
+            this.objectStoreService = objectStoreService;
         }
 
         public bool IsPresent(Cid cid)
@@ -49,7 +49,9 @@ namespace ContentTower.Services
 
         private bool ExistsOnFs(Cid cid)
         {
-            return fs.Exists(cid);
+            return
+                dataStoreService.Exists(cid) &&
+                objectStoreService.Exists(cid);
         }
 
         private void CheckCaches()

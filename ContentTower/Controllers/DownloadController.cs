@@ -1,5 +1,4 @@
 ﻿using ContentTower.Services;
-using ContentTower.System;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mime;
 
@@ -24,33 +23,33 @@ namespace ContentTower.Controllers
         [Route("download/{cid}")]
         [EndpointDescription("Downloads content as a stream.")]
         [ProducesResponseType<Stream>(StatusCodes.Status200OK, MediaTypeNames.Application.Octet)]
-        public async Task<Stream> Download([FromRoute] string cid)
+        public Stream Download([FromRoute] string cid)
         {
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
             var contentId = new Cid(cid);
             if (!presenceService.IsPresent(contentId)) throw new BadHttpRequestException("Not found");
 
-            var metadata = await loadService.ReadMetadata(contentId);
-            var stream = await loadService.ReadData(contentId);
-            await UpdateLastActivity(metadata);
+            var metadata = loadService.ReadMetadata(contentId);
+            var stream = loadService.ReadData(contentId);
+            UpdateLastActivity(metadata);
             return stream;
         }
 
         [HttpGet]
         [Route("metadata/{cid}")]
         [EndpointDescription("Retrieves metadata for content.")]
-        public async Task<ContentView> Metadata([FromRoute] string cid)
+        public ContentView Metadata([FromRoute] string cid)
         {
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
             var contentId = new Cid(cid);
             if (!presenceService.IsPresent(contentId)) throw new BadHttpRequestException("Not found");
-            return Map(await loadService.ReadMetadata(contentId));
+            return Map(loadService.ReadMetadata(contentId));
         }
 
         [HttpGet]
         [Route("check/{cid}")]
         [EndpointDescription("Checks whether the content exists in this service.")]
-        public async Task<bool> Check([FromRoute] string cid)
+        public bool Check([FromRoute] string cid)
         {
             if (!IsValid(cid)) throw new BadHttpRequestException("Invalid CID");
 
@@ -71,9 +70,9 @@ namespace ContentTower.Controllers
             };
         }
 
-        private async Task UpdateLastActivity(FileMetadata metadata)
+        private void UpdateLastActivity(FileMetadata metadata)
         {
-            await pinService.RegisterActivity(metadata.Cid);
+            pinService.RegisterActivity(metadata.Cid);
         }
 
         private static bool IsValid(string cid)

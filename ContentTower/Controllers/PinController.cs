@@ -22,12 +22,14 @@ namespace ContentTower.Controllers
         [EndpointDescription("Creates a new pin and attaches it to the specified contents.")]
         public async Task<IActionResult> Create([FromBody] CreatePinRequest createPinRequest)
         {
+            throw new NotImplementedException();
         }
 
         [HttpPatch]
         [EndpointDescription("Attached content to or detaches content from the specified pin.")]
         public async Task<IActionResult> Update([FromBody] UpdatePinRequest updatePinRequest)
         {
+            throw new NotImplementedException();
         }
 
         [HttpGet]
@@ -35,6 +37,7 @@ namespace ContentTower.Controllers
         [EndpointDescription("Retrieves pin details.")]
         public async Task<PinView> Get([FromRoute] string pinId)
         {
+            throw new NotImplementedException();
         }
 
         [HttpDelete]
@@ -42,6 +45,7 @@ namespace ContentTower.Controllers
         [EndpointDescription("Deletes a pin immediately. Not allowed for pins with StoreType 'Permanent'.")]
         public async Task<IActionResult> Delete([FromRoute] string pinId)
         {
+            throw new NotImplementedException();
         }
 
         [HttpDelete]
@@ -49,19 +53,20 @@ namespace ContentTower.Controllers
         [EndpointDescription("Deletes a pin immediately. Explicit override for pins with StoreType 'Permanent'.")]
         public async Task<IActionResult> DeleteForce([FromRoute] string pinId)
         {
+            throw new NotImplementedException();
         }
 
         private async Task<IActionResult> DeleteInternal(Cid cid, bool force)
         {
-            if (!presenceService.IsPresent(cid)) return NotFound();
+            //if (!presenceService.IsPresent(cid)) return NotFound();
 
-            var metadata = await loadService.ReadMetadata(cid);
-            if (metadata.StoreType == StoreType.PermanentFile && !force)
-            {
-                return BadRequest("Cannot delete permanent file.");
-            }
+            //var metadata = await loadService.ReadMetadata(cid);
+            //if (metadata.StoreType == StoreType.PermanentFile && !force)
+            //{
+            //    return BadRequest("Cannot delete permanent file.");
+            //}
 
-            await deleteService.DeleteFile(metadata);
+            //await deleteService.DeleteFile(metadata);
             return Ok();
         }
 

@@ -4,86 +4,87 @@ namespace ContentTower.Services
 {
     public interface IPinService
     {
-        Task Attach(PinId[] pinIds, Cid cid);
-        Task<PinId[]> Create(StoreType[] types, Cid cid);
+        void Attach(PinId[] pinIds, Cid cid);
+        PinId[] Create(StoreType[] types, Cid cid);
         bool Exists(PinId pinId);
-        Task RegisterActivity(Cid cid);
+        void RegisterActivity(Cid cid);
     }
 
     public class PinService : IPinService
     {
         public static readonly string PinIdPrefix = "p";
         private readonly ILogger<PinService> logger;
-        private readonly IFileSystem fs;
+        private readonly IObjectStoreService objectStoreService;
         private readonly ITime timeService;
 
-        public PinService(ILogger<PinService> logger, IFileSystem fs, ITime timeService)
+        public PinService(ILogger<PinService> logger, IObjectStoreService objectStoreService, ITime timeService)
         {
             this.logger = logger;
-            this.fs = fs;
+            this.objectStoreService = objectStoreService;
             this.timeService = timeService;
         }
 
-        public async Task Attach(PinId[] pinIds, Cid cid)
+        public void Attach(PinId[] pinIds, Cid cid)
         {
-            await AddPinsToFile(pinIds, cid);
+            AddPinsToFile(pinIds, cid);
             foreach (var pinId in pinIds)
             {
-                await AddCidToPin(pinId, cid);
+                AddCidToPin(pinId, cid);
             }
             logger.LogInformation("Attached pins {0} to cid {1}", pinIds, cid);
         }
 
-        public async Task<PinId[]> Create(StoreType[] types, Cid cid)
+        public PinId[] Create(StoreType[] types, Cid cid)
         {
             var result = new List<PinId>();
             foreach (var type in types)
             {
-                result.Add(await CreateNewPin(type, cid));
+                result.Add(CreateNewPin(type, cid));
             }
             return result.ToArray();
         }
 
         public bool Exists(PinId pinId)
         {
-            return fs.Exists(pinId);
+            return objectStoreService.Exists(pinId);
         }
 
-        public async Task RegisterActivity(Cid cid)
+        public void RegisterActivity(Cid cid)
         {
-            var file = await fs.ReadObject<FileMetadata>(cid);
+            var file = objectStoreService.ReadObject<FileMetadata>(cid);
             foreach (var pin in file.PinIds)
             {
-                await RegisterActivity(pin);
+                RegisterActivity(pin);
             }
         }
 
-        private async Task<PinId> CreateNewPin(StoreType type, Cid cid)
+        private PinId CreateNewPin(StoreType type, Cid cid)
         {
-            var pin = new PinData
+            var pinId = CreateNewPinId();
+            objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
             {
-                PinId = CreateNewPinId(),
-                Cids = new List<Cid> { cid },
-                CreateUtc = timeService.UtcNow(),
-                LastActivityUtc = timeService.UtcNow(),
-                StoreType = type
-            };
-            await fs.WriteObject(pin.PinId, pin);
-            return pin.PinId;
+                pin.PinId = pinId;
+                pin.Cids = new List<Cid> { cid };
+                pin.CreateUtc = timeService.UtcNow();
+                pin.LastActivityUtc = timeService.UtcNow();
+                pin.StoreType = type;
+            });
+            return pinId;
         }
 
-        private PinId CreateNewPinId()
+        private static PinId CreateNewPinId()
         {
             return new PinId(PinIdPrefix + Guid.NewGuid().ToString());
         }
 
-        private async Task AddPinsToFile(PinId[] pinIds, Cid cid)
+        private void AddPinsToFile(PinId[] pinIds, Cid cid)
         {
             try
             {
-                var file = await fs.ReadObject<FileMetadata>(cid);
-                file.PinIds.AddRange(pinIds);
-                await fs.WriteObject(cid, file);
+                objectStoreService.CreateOrUpdateObject<FileMetadata>(cid, file =>
+                {
+                    file.PinIds.AddRange(pinIds);
+                });
             }
             catch (Exception ex)
             {
@@ -92,13 +93,14 @@ namespace ContentTower.Services
             }
         }
 
-        private async Task AddCidToPin(PinId pinId, Cid cid)
+        private void AddCidToPin(PinId pinId, Cid cid)
         {
             try
             {
-                var pin = await fs.ReadObject<PinData>(pinId);
-                pin.Cids.Add(cid);
-                await fs.WriteObject(pinId, pin);
+                objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
+                {
+                    pin.Cids.Add(cid);
+                });
             }
             catch (Exception ex)
             {
@@ -107,13 +109,14 @@ namespace ContentTower.Services
             }
         }
 
-        private async Task RegisterActivity(PinId pinId)
+        private void RegisterActivity(PinId pinId)
         {
             try
             {
-                var pin = await fs.ReadObject<PinData>(pinId);
-                pin.LastActivityUtc = timeService.UtcNow();
-                await fs.WriteObject(pinId, pin);
+                objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
+                {
+                    pin.LastActivityUtc = timeService.UtcNow();
+                });
             }
             catch (Exception ex)
             {

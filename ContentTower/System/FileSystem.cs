@@ -1,32 +1,18 @@
-﻿using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-
-namespace ContentTower.System
+﻿namespace ContentTower.System
 {
     public interface IFileSystem
     {
-        Task WriteObject<T>(IId id, T obj);
-        Task WriteData(IId id, byte[] data);
-        Task<T> ReadObject<T>(IId id);
-        Task<Stream> ReadData(IId id);
-        Task DeleteObject(IId id);
-        Task DeleteData(IId id);
-        Task IterateObjects<T>(Action<T> onObject);
-        bool Exists(IId id);
+        bool Exists(string path);
         bool CheckCreateDir(string dataPath);
+        void DeleteFile(string path);
+        Stream OpenRead(string path);
+        void WriteAllBytes(string path, byte[] data);
+        string[] DirectoryGetFiles(string path);
+        void WriteAllText(string path, string text);
     }
 
     public class FileSystem : IFileSystem
     {
-        private readonly StorageOptions options;
-        private readonly ILogger<FileSystem> logger;
-
-        public FileSystem(ILogger<FileSystem> logger, IOptions<StorageOptions> options)
-        {
-            this.options = options.Value;
-            this.logger = logger;
-        }
-
         public bool CheckCreateDir(string path)
         {
             if (Directory.Exists(path)) return true;
@@ -34,85 +20,34 @@ namespace ContentTower.System
             return Directory.Exists(path);
         }
 
-        public async Task DeleteData(IId id)
+        public void DeleteFile(string path)
         {
-            File.Delete(GetDataFilepath(id));
+            File.Delete(path);
         }
 
-        public async Task DeleteObject(IId id)
+        public string[] DirectoryGetFiles(string path)
         {
-            File.Delete(GetJsonFilepath(id));
+            return Directory.GetFiles(path);
         }
 
-        public bool Exists(IId id)
+        public bool Exists(string path)
         {
-            return
-                File.Exists(GetJsonFilepath(id)) &&
-                File.Exists(GetDataFilepath(id));
+            return File.Exists(path);
         }
 
-        public async Task IterateObjects<T>(Action<T> onObject)
+        public Stream OpenRead(string path)
         {
-            var files = Directory.GetFiles(options.DataPath);
-            foreach (var file in files)
-            {
-                if (file.ToLowerInvariant().EndsWith(".json"))
-                {
-                    TryJson(file, onObject);
-                }
-            }
+            return File.OpenRead(path);
         }
 
-        public async Task<Stream> ReadData(IId id)
+        public void WriteAllBytes(string path, byte[] data)
         {
-            return File.OpenRead(GetDataFilepath(id));
+            File.WriteAllBytes(path, data);
         }
 
-        public async Task<T> ReadObject<T>(IId id)
+        public void WriteAllText(string path, string text)
         {
-            var obj = GetJson<T>(GetJsonFilepath(id));
-            if (obj == null) throw new Exception("Failed to load object for " + id);
-            return obj;
-        }
-
-        public async Task WriteData(IId id, byte[] data)
-        {
-            File.WriteAllBytes(GetDataFilepath(id), data);
-        }
-
-        public async Task WriteObject<T>(IId id, T obj)
-        {
-            File.WriteAllText(GetJsonFilepath(id), JsonConvert.SerializeObject(obj));
-        }
-
-        private void TryJson<T>(string file, Action<T> onObject)
-        {
-            try
-            {
-                var obj = GetJson<T>(file);
-                if (obj != null) onObject(obj);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Exception in filesystem abstraction");
-            }
-        }
-
-        private T? GetJson<T>(string file)
-        {
-            return JsonConvert.DeserializeObject<T>(File.ReadAllText(file));
-        }
-
-        private string GetJsonFilepath(IId id)
-        {
-            if (string.IsNullOrEmpty(id.Id)) throw new Exception("Invalid CID");
-            return Path.Combine(options.DataPath, id.Id + ".json");
-        }
-
-        private string GetDataFilepath(IId id)
-        {
-            if (string.IsNullOrEmpty(id.Id)) throw new Exception("Invalid CID");
-            return Path.Combine(options.DataPath, id.Id + ".data");
+            File.WriteAllText(path, text);
         }
     }
 }

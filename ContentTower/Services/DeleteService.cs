@@ -27,8 +27,8 @@ namespace ContentTower.Services
             logger.LogTrace("Deleting {0}...", item.Cid);
             try
             {
-                await fs.DeleteData(item.Cid);
-                await fs.DeleteObject(item.Cid);
+                //await fs.DeleteData(item.Cid);
+                //await fs.DeleteObject(item.Cid);
                 presenceService.ClearPresence(item.Cid);
                 quotaService.RemoveUsedBytes(item.Length);
                 logger.LogInformation("Successfully deleted {0}.", item.Cid);

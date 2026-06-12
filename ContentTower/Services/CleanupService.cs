@@ -14,16 +14,16 @@ namespace ContentTower.Services
         private readonly TimeSpan stepSleep = TimeSpan.FromMilliseconds(100);
         private readonly ILogger<CleanupService> logger;
         private readonly IHostApplicationLifetime appLifetime;
-        private readonly IFileSystem fs;
+        private readonly IObjectStoreService objectStoreService;
         private readonly ITime timeService;
         private readonly ICleanupWorker cleanupWorker;
         private readonly List<FileMetadata> queue = new List<FileMetadata>();
 
-        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, IFileSystem fs, ITime timeService, ICleanupWorker cleanupWorker)
+        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, IObjectStoreService objectStoreService, ITime timeService, ICleanupWorker cleanupWorker)
         {
             this.logger = logger;
             this.appLifetime = appLifetime;
-            this.fs = fs;
+            this.objectStoreService = objectStoreService;
             this.timeService = timeService;
             this.cleanupWorker = cleanupWorker;
 
@@ -76,7 +76,7 @@ namespace ContentTower.Services
 
         private async Task FillQueue()
         {
-            await fs.IterateObjects<FileMetadata>(queue.Add);
+            objectStoreService.IterateObjects<FileMetadata>(queue.Add);
             logger.LogTrace("Scheduled {0} items for evaluation.", queue.Count);
             await timeService.Sleep(longSleep, Ct);
         }
