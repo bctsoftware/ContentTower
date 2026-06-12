@@ -6,8 +6,8 @@ namespace ContentTower
     public enum StoreType
     {
         Default,
-        TemporaryFile,
-        PermanentFile
+        Temporary,
+        Permanent
     }
 
     public interface IId

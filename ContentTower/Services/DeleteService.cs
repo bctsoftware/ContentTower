@@ -4,7 +4,7 @@ namespace ContentTower.Services
 {
     public interface IDeleteService
     {
-        Task DeleteFile(FileMetadata item);
+        void DeleteContent(Cid cid);
     }
 
     public class DeleteService : IDeleteService

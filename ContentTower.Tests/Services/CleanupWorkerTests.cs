@@ -104,7 +104,7 @@ public class CleanupWorkerTests
     public async Task ProcessItem_WithPermanentFile_ReturnsEarlyWithoutDeletion()
     {
         var worker = CreateCleanupWorker();
-        var file = CreateTestFile(storeType: StoreType.PermanentFile);
+        var file = CreateTestFile(storeType: StoreType.Permanent);
         SetupTimeService(DateTime.UtcNow);
         SetupQuotaService(QuotaState.Nominal);
         SetupFileDeletion();
@@ -162,7 +162,7 @@ public class CleanupWorkerTests
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddMinutes(-30)); // Last activity 30 min ago
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Nominal);
@@ -179,7 +179,7 @@ public class CleanupWorkerTests
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddHours(-3)); // Last activity 3 hours ago
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Nominal);
@@ -238,7 +238,7 @@ public class CleanupWorkerTests
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddMinutes(-30)); // Last activity 30 min ago
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Pressure);
@@ -255,7 +255,7 @@ public class CleanupWorkerTests
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddMinutes(-65)); // Last activity 65 min ago
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Pressure);
@@ -314,7 +314,7 @@ public class CleanupWorkerTests
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddMinutes(-30)); // Last activity 30 min ago
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Full);
@@ -331,7 +331,7 @@ public class CleanupWorkerTests
         var worker = CreateCleanupWorker();
         var now = DateTime.UtcNow;
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddMinutes(-65)); // Last activity 65 min ago
         SetupTimeService(now);
         SetupQuotaService(QuotaState.Full);
@@ -358,7 +358,7 @@ public class CleanupWorkerTests
         SetupFileDeletion();
 
         var expiredFile = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             lastActivityUtc: now.AddHours(-3)); // 3 hours old, should expire in nominal state
         await worker.ProcessItem(expiredFile);
 
@@ -463,7 +463,7 @@ public class CleanupWorkerTests
 
         // File with recent upload but old activity
         var file = CreateTestFile(
-            storeType: StoreType.TemporaryFile,
+            storeType: StoreType.Temporary,
             uploadUtc: now.AddMinutes(-5),
             lastActivityUtc: now.AddHours(-3));
 

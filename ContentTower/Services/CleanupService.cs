@@ -1,4 +1,5 @@
-﻿using ContentTower.System;
+﻿using ContentTower.Services.CleanupWorkers;
+using ContentTower.System;
 using Microsoft.Extensions.Options;
 
 namespace ContentTower.Services
@@ -14,19 +15,17 @@ namespace ContentTower.Services
         private readonly TimeSpan stepSleep = TimeSpan.FromMilliseconds(100);
         private readonly ILogger<CleanupService> logger;
         private readonly IHostApplicationLifetime appLifetime;
-        private readonly IObjectStoreService objectStoreService;
         private readonly ITime timeService;
-        private readonly ICleanupWorker cleanupWorker;
-        private readonly List<FileMetadata> queue = new List<FileMetadata>();
+        private readonly IPinCleanupWorker pinCleanupWorker;
+        private readonly IContentCleanupWorker contentCleanupWorker;
 
-        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, IObjectStoreService objectStoreService, ITime timeService, ICleanupWorker cleanupWorker)
+        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, ITime timeService, IPinCleanupWorker pinCleanupWorker, IContentCleanupWorker contentCleanupWorker)
         {
             this.logger = logger;
             this.appLifetime = appLifetime;
-            this.objectStoreService = objectStoreService;
             this.timeService = timeService;
-            this.cleanupWorker = cleanupWorker;
-
+            this.pinCleanupWorker = pinCleanupWorker;
+            this.contentCleanupWorker = contentCleanupWorker;
             longSleep = options.Value.CleanupInterval;
         }
 
@@ -64,23 +63,11 @@ namespace ContentTower.Services
 
         private async Task Step()
         {
-        todo: completely rebuild the cleanup and delete services
+            pinCleanupWorker.Step(Ct);
+            await timeService.Sleep(stepSleep, Ct);
 
-            if (queue.Count == 0) await FillQueue();
-            else
-            {
-                var item = queue.First();
-                queue.RemoveAt(0);
-                await cleanupWorker.ProcessItem(item);
-                await timeService.Sleep(stepSleep, Ct);
-            }
-        }
-
-        private async Task FillQueue()
-        {
-            objectStoreService.IterateObjects<FileMetadata>(queue.Add);
-            logger.LogTrace("Scheduled {0} items for evaluation.", queue.Count);
-            await timeService.Sleep(longSleep, Ct);
+            contentCleanupWorker.Step(Ct);
+            await timeService.Sleep(stepSleep, Ct);
         }
 
         private CancellationToken Ct => appLifetime.ApplicationStopping;

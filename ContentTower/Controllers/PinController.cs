@@ -82,7 +82,7 @@ namespace ContentTower.Controllers
         private void DeleteInternal(PinId pinId, bool force)
         {
             var pin = pinService.Get(pinId);
-            if (pin.StoreType == StoreType.PermanentFile && !force) throw new BadHttpRequestException("Cannot delete permanent file.");
+            if (pin.StoreType == StoreType.Permanent && !force) throw new BadHttpRequestException("Cannot delete permanent file.");
             pinService.Delete(pinId);
         }
 

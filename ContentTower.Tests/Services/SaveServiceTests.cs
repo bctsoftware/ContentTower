@@ -102,7 +102,7 @@ public class SaveServiceTests
     public async Task Handle_WithNewContent_CreatesMetadataWithCorrectProperties()
     {
         var request = CreateValidUploadRequest(
-            storeType: StoreType.PermanentFile,
+            storeType: StoreType.Permanent,
             name: "my-file.pdf",
             contentType: "application/pdf"
         );
@@ -131,7 +131,7 @@ public class SaveServiceTests
         await Assert.That(capturedMetadata.Name).IsEqualTo("my-file.pdf");
         await Assert.That(capturedMetadata.ContentType).IsEqualTo("application/pdf");
         await Assert.That(capturedMetadata.Length).IsEqualTo(request.Data.Length);
-        await Assert.That(capturedMetadata.StoreType).IsEqualTo(StoreType.PermanentFile);
+        await Assert.That(capturedMetadata.StoreType).IsEqualTo(StoreType.Permanent);
         await Assert.That(capturedMetadata.UploadUtc).IsEqualTo(fixedNow);
         await Assert.That(capturedMetadata.LastActivityUtc).IsEqualTo(fixedNow);
     }
@@ -272,7 +272,7 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WithTemporaryStoreType_SavesWithCorrectStoreType()
     {
-        var request = CreateValidUploadRequest(storeType: StoreType.TemporaryFile);
+        var request = CreateValidUploadRequest(storeType: StoreType.Temporary);
         var testCid = CreateTestCid();
         var fixedNow = GetFixedUtcNow();
         FileMetadata? capturedMetadata = null;
@@ -291,7 +291,7 @@ public class SaveServiceTests
         await service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreType.TemporaryFile);
+        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreType.Temporary);
     }
 
     [Test]
