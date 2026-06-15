@@ -53,7 +53,7 @@ namespace ContentTower.Services.CleanupWorkers
         private List<PinData> GetAllPins()
         {
             var result = new List<PinData>();
-            objectStoreService.IterateObjects<PinData>(result.Add);
+            objectStoreService.IterateObjects<PinData>(PinService.PinIdPrefix, result.Add);
             return result;
         }
 

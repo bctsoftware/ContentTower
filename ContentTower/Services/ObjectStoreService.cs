@@ -10,7 +10,7 @@ namespace ContentTower.Services
         void CreateOrUpdateObject<T>(IId id, Action<T> onObj) where T : new();
         T ReadObject<T>(IId id);
         void DeleteObject(IId id);
-        void IterateObjects<T>(Action<T> onObject);
+        void IterateObjects<T>(string prefix, Action<T> onObject);
     }
 
     public class ObjectStoreService : IObjectStoreService
@@ -40,12 +40,12 @@ namespace ContentTower.Services
             }
         }
 
-        public void IterateObjects<T>(Action<T> onObject)
+        public void IterateObjects<T>(string prefix, Action<T> onObject)
         {
             var files = fs.DirectoryGetFiles(options.DataPath);
             foreach (var file in files)
             {
-                if (file.ToLowerInvariant().EndsWith(".json"))
+                if (file.StartsWith(prefix) && file.ToLowerInvariant().EndsWith(".json"))
                 {
                     TryJson(file, onObject);
                 }

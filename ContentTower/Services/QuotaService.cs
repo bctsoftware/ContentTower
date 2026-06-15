@@ -38,7 +38,7 @@ namespace ContentTower.Services
             double q = status.Quota;
             nominalLimit = Convert.ToInt64(q * 0.8);
 
-            objectStoreService.IterateObjects<FileMetadata>(CountUpUsedBytes);
+            objectStoreService.IterateObjects<FileMetadata>(HashService.CidPrefix, CountUpUsedBytes);
 
             UpdateState();
 
