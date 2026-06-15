@@ -6,8 +6,8 @@ namespace ContentTower.IntegrationTests.Tests
     {
         public override void Run()
         {
-            var (_, _, defaultCid) = UploadRandom(StoreRequestType.Default);
-            var (_, _, tempCid) = UploadRandom(StoreRequestType.TemporaryFile);
+            var (_, _, defaultCid, defautPinId) = UploadRandom(StoreType.Default);
+            var (_, _, tempCid, tempPinId) = UploadRandom(StoreType.Temporary);
 
             Check(() => Ct.Check(defaultCid) == true);
             Check(() => Ct.Check(tempCid) == true);

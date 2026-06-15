@@ -47,48 +47,86 @@ namespace ContentTower.IntegrationTests
             throw new Exception("Invalid configuration received");
         }
 
-        public Cid Upload(string name, string type, byte[] data, StoreRequestType storeType = StoreRequestType.Default)
+        public (Cid, PinId) UploadNewPin(string name, string type, byte[] data, StoreType storeType = StoreType.Default)
         {
             var response = On(api => api.UploadAsync(new UploadRequest
             {
                 Name = name,
                 ContentType = type,
                 Data = data,
-                StoreType = storeType
+                AttachExistingPinIds = Array.Empty<string>(),
+                CreateNewPins = new[]
+                {
+                    storeType
+                }
             }));
-            var cid = new Cid(response.ContentId);
-            log.Log($"Uploaded {data.Length} bytes '{name}' => {cid}");
+            var cid = new Cid(response.Cid);
+            var pinId = new PinId(response.NewPinIds.Single());
+            log.Log($"Uploaded {data.Length} bytes '{name}' => {cid},{pinId}");
+            return (cid, pinId);
+        }
+
+        public Cid UploadAttachPin(string name, string type, byte[] data, PinId pinId)
+        {
+            var response = On(api => api.UploadAsync(new UploadRequest
+            {
+                Name = name,
+                ContentType = type,
+                Data = data,
+                AttachExistingPinIds = new[] { pinId.Id },
+                CreateNewPins = Array.Empty<StoreType>()
+            }));
+            var cid = new Cid(response.Cid);
+            log.Log($"Uploaded and attached {data.Length} bytes '{name}' to {pinId} => {cid}");
             return cid;
         }
 
         public bool Check(Cid cid)
         {
-            var result = On(api => api.CheckAsync(cid.Hash));
+            var result = On(api => api.CheckAsync(cid.Id));
             log.Log($"Checked {cid} => {result}");
             return result;
         }
 
-        public FileMetadata Metadata(Cid cid)
+        public bool Check(PinId pinId)
         {
-            var result = On(api => api.MetadataAsync(cid.Hash));
-            log.Log($"Metadata {cid} => '{result.Name}'");
+            try
+            {
+
+            }
+            var result = On(api => api.PinGETAsync(pinId.Id));
+            log.Log($"Checked {pinId} => {result}");
+            return result;
+        }
+
+        public ContentView Metadata(Cid cid)
+        {
+            var result = On(api => api.MetadataAsync(cid.Id));
+            log.Log($"Content {cid} => '{result.Name}'");
+            return result;
+        }
+
+        public PinView Pin(PinId pinId)
+        {
+            var result = On(api => api.PinGETAsync(pinId.Id));
+            log.Log($"Pin {pinId} => '{string.Join(",", result.Cids)}'");
             return result;
         }
 
         public byte[] Download(Cid cid)
         {
             using var stream = new MemoryStream();
-            var fileResponse = On(api => api.DownloadAsync(cid.Hash));
+            var fileResponse = On(api => api.DownloadAsync(cid.Id));
             fileResponse.Stream.CopyTo(stream);
             var data = stream.ToArray();
             log.Log($"Downloaded {cid} => {data.Length} bytes");
             return data;
         }
 
-        public void Delete(Cid cid, bool force = false)
+        public void Delete(PinId pinId, bool force = false)
         {
-            if (force) On(api => api.ForceAsync(cid.Hash));
-            else On(api => api.DeleteAsync(cid.Hash));
+            if (force) On(api => api.ForceAsync(pinId.Id));
+            else On(api => api.PinDELETEAsync(pinId.Id));
         }
 
         public T On<T>(Func<openapiClient, Task<T>> action)
@@ -111,18 +149,32 @@ namespace ContentTower.IntegrationTests
         }
     }
 
-    public class Cid
+    public abstract class BaseId
     {
-        public Cid(string hash)
+        public BaseId(string id)
         {
-            Hash = hash;
+            Id = id;
         }
 
-        public string Hash { get; }
+        public string Id { get; }
 
         public override string ToString()
         {
-            return $"'{Hash.Substring(0, 5)}..{Hash.Substring(Hash.Length - 3)}'";
+            return $"'{Id.Substring(0, 5)}..{Id.Substring(Id.Length - 3)}'";
+        }
+    }
+
+    public class Cid : BaseId
+    {
+        public Cid(string id) : base(id)
+        {
+        }
+    }
+
+    public class PinId : BaseId
+    {
+        public PinId(string id) : base(id)
+        {
         }
     }
 }

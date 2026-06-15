@@ -2,56 +2,52 @@
 {
     public interface IPresenceService
     {
-        bool IsPresent(Cid cid);
-        void SetPresence(Cid cid);
-        void ClearPresence(Cid cid);
+        bool IsPresent(IId id);
+        void SetPresence(IId id);
+        void ClearPresence(IId id);
     }
 
     public class PresenceService : IPresenceService
     {
         private readonly HashSet<string> exists = new HashSet<string>();
         private readonly HashSet<string> doesntExist = new HashSet<string>();
-        private readonly IDataStoreService dataStoreService;
         private readonly IObjectStoreService objectStoreService;
 
-        public PresenceService(IDataStoreService dataStoreService, IObjectStoreService objectStoreService)
+        public PresenceService(IObjectStoreService objectStoreService)
         {
-            this.dataStoreService = dataStoreService;
             this.objectStoreService = objectStoreService;
         }
 
-        public bool IsPresent(Cid cid)
+        public bool IsPresent(IId id)
         {
-            if (exists.Contains(cid.Id)) return true;
-            if (ExistsOnFs(cid))
+            if (exists.Contains(id.Id)) return true;
+            if (ExistsOnFs(id))
             {
-                exists.Add(cid.Id);
+                exists.Add(id.Id);
                 return true;
             }
             return false;
         }
 
-        public void ClearPresence(Cid cid)
+        public void ClearPresence(IId id)
         {
-            doesntExist.Add(cid.Id);
-            exists.Remove(cid.Id);
+            doesntExist.Add(id.Id);
+            exists.Remove(id.Id);
 
             CheckCaches();
         }
 
-        public void SetPresence(Cid cid)
+        public void SetPresence(IId id)
         {
-            exists.Add(cid.Id);
-            doesntExist.Remove(cid.Id);
+            exists.Add(id.Id);
+            doesntExist.Remove(id.Id);
 
             CheckCaches();
         }
 
-        private bool ExistsOnFs(Cid cid)
+        private bool ExistsOnFs(IId id)
         {
-            return
-                dataStoreService.Exists(cid) &&
-                objectStoreService.Exists(cid);
+            return objectStoreService.Exists(id);
         }
 
         private void CheckCaches()

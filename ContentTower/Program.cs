@@ -39,6 +39,7 @@ namespace ContentTower
             builder.Services.AddSingleton<IFileSystem, FileSystem>();
             // Services:
             builder.Services.AddSingleton<IContentCleanupWorker, ContentCleanupWorker>();
+            builder.Services.AddSingleton<IDatafileCleanupWorker, DatafileCleanupWorker>();
             builder.Services.AddSingleton<IPinCleanupWorker, PinCleanupWorker>();
             builder.Services.AddSingleton<ITimespanSelector, TimespanSelector>();
             builder.Services.AddSingleton<ICleanupService, CleanupService>();

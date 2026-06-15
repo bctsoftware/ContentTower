@@ -18,14 +18,19 @@ namespace ContentTower.Services
         private readonly ITime timeService;
         private readonly IPinCleanupWorker pinCleanupWorker;
         private readonly IContentCleanupWorker contentCleanupWorker;
+        private readonly IDatafileCleanupWorker datafileCleanupWorker;
 
-        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, ITime timeService, IPinCleanupWorker pinCleanupWorker, IContentCleanupWorker contentCleanupWorker)
+        public CleanupService(ILogger<CleanupService> logger, IOptions<StorageOptions> options, IHostApplicationLifetime  appLifetime, ITime timeService,
+            IPinCleanupWorker pinCleanupWorker,
+            IContentCleanupWorker contentCleanupWorker,
+            IDatafileCleanupWorker datafileCleanupWorker)
         {
             this.logger = logger;
             this.appLifetime = appLifetime;
             this.timeService = timeService;
             this.pinCleanupWorker = pinCleanupWorker;
             this.contentCleanupWorker = contentCleanupWorker;
+            this.datafileCleanupWorker = datafileCleanupWorker;
             longSleep = options.Value.CleanupInterval;
         }
 
@@ -65,8 +70,13 @@ namespace ContentTower.Services
         {
             pinCleanupWorker.Step(Ct);
             await timeService.Sleep(stepSleep, Ct);
+            if (Ct.IsCancellationRequested) return;
 
             contentCleanupWorker.Step(Ct);
+            await timeService.Sleep(stepSleep, Ct);
+            if (Ct.IsCancellationRequested) return;
+
+            datafileCleanupWorker.Step(Ct);
             await timeService.Sleep(stepSleep, Ct);
         }
 

@@ -6,7 +6,7 @@ namespace ContentTower.IntegrationTests.Tests
     {
         public override void Run()
         {
-            var (name, type, cid) = UploadRandom(StoreRequestType.TemporaryFile);
+            var (name, type, cid, pinId) = UploadRandom(StoreType.Temporary);
 
             var span = TimeSpan.FromSeconds(Options.StoreDurationTemporaryNominalSeconds);
 

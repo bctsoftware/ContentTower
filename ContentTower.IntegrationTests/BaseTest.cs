@@ -87,23 +87,23 @@ namespace ContentTower.IntegrationTests
             checkCounter++;
         }
 
-        protected (string, string, Cid) UploadRandom(int length)
+        protected (string, string, Cid, PinId) UploadRandom(int length)
         {
-            return UploadRandom(length, StoreRequestType.Default);
+            return UploadRandom(length, StoreType.Default);
         }
 
-        protected (string, string, Cid) UploadRandom(StoreRequestType storeType)
+        protected (string, string, Cid, PinId) UploadRandom(StoreType storeType)
         {
             return UploadRandom(DataHelper.GetRandomNumber(1000, 50000), storeType);
         }
 
-        protected (string, string, Cid) UploadRandom(int length, StoreRequestType storeType)
+        protected (string, string, Cid, PinId) UploadRandom(int length, StoreType storeType)
         {
             var name = DataHelper.GetRandomString();
             var type = DataHelper.GetRandomString();
             var data = DataHelper.GetRandomData(length);
-            var cid = Ct.Upload(name, type, data, storeType);
-            return (name, type, cid);
+            var (cid, pinId) = Ct.UploadNewPin(name, type, data, storeType);
+            return (name, type, cid, pinId);
         }
 
         protected void Sleep(TimeSpan half)

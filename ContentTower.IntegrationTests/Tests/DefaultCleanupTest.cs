@@ -6,7 +6,7 @@ namespace ContentTower.IntegrationTests.Tests
     {
         public override void Run()
         {
-            var (name, type, cid) = UploadRandom(StoreRequestType.Default);
+            var (name, type, cid, pinId) = UploadRandom(StoreType.Default);
 
             var span = TimeSpan.FromSeconds(Options.StoreDurationDefaultNominalSeconds);
             var half = span / 2.0;

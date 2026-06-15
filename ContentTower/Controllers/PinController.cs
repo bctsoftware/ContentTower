@@ -8,10 +8,12 @@ namespace ContentTower.Controllers
     public class PinController : ControllerBase
     {
         private readonly IPinService pinService;
+        private readonly IPresenceService presenceService;
 
-        public PinController(IPinService pinService)
+        public PinController(IPinService pinService, IPresenceService presenceService)
         {
             this.pinService = pinService;
+            this.presenceService = presenceService;
         }
 
         [HttpPost]
@@ -45,6 +47,17 @@ namespace ContentTower.Controllers
             if (!IsValidPinId(pinId)) throw new BadHttpRequestException($"Invalid PinId: '{pinId}'.");
             var pid = new PinId(pinId);
             return Map(pinService.Get(pid));
+        }
+
+        [HttpGet]
+        [Route("check/{pinId}")]
+        [EndpointDescription("Checks whether the pin exists in this service.")]
+        public bool Check([FromRoute] string pinId)
+        {
+            if (!IsValidPinId(pinId)) throw new BadHttpRequestException("Invalid PinId");
+            var pid = new PinId(pinId);
+            if (!presenceService.IsPresent(pid)) return false;
+            return true;
         }
 
         [HttpDelete]

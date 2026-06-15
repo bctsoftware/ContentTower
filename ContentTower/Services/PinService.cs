@@ -21,12 +21,14 @@ namespace ContentTower.Services
         private readonly ILogger<PinService> logger;
         private readonly IObjectStoreService objectStoreService;
         private readonly ITime timeService;
+        private readonly IPresenceService presenceService;
 
-        public PinService(ILogger<PinService> logger, IObjectStoreService objectStoreService, ITime timeService)
+        public PinService(ILogger<PinService> logger, IObjectStoreService objectStoreService, ITime timeService, IPresenceService presenceService)
         {
             this.logger = logger;
             this.objectStoreService = objectStoreService;
             this.timeService = timeService;
+            this.presenceService = presenceService;
         }
 
         public void Attach(PinId[] pinIds, Cid cid)
@@ -100,6 +102,7 @@ namespace ContentTower.Services
             {
                 RemovePinFromCid(pinId, cid);
             }
+            presenceService.ClearPresence(pinId);
             objectStoreService.DeleteObject(pinId);
             logger.LogInformation("Deleted pin {0} from {1} contents.", pinId, pin.Cids.Count);
         }
@@ -115,6 +118,7 @@ namespace ContentTower.Services
                 pin.LastActivityUtc = timeService.UtcNow();
                 pin.StoreType = type;
             });
+            presenceService.SetPresence(pinId);
             logger.LogInformation("Created new pin {0} for {1} contents.", pinId, cids.Length);
             return pinId;
         }

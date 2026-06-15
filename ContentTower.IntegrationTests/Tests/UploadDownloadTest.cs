@@ -9,16 +9,21 @@
             var type = "testType";
 
             var uploadUtc = DateTime.UtcNow;
-            var cid = Ct.Upload(name, type, data);
+            var (cid, pinId)= Ct.UploadNewPin(name, type, data);
 
             var metadata = Ct.Metadata(cid);
-
-            Check(() => metadata.Cid.Hash == cid.Hash);
+            Check(() => metadata.Cid == cid.Id);
             Check(() => metadata.Name == name);
             Check(() => metadata.ContentType == type);
             Check(() => metadata.Length == data.Length);
-            Check(() => IsCloseTo(metadata.UploadUtc, uploadUtc));
-            Check(() => IsCloseTo(metadata.LastActivityUtc, uploadUtc));
+            Check(() => metadata.PinIds.Count == 1);
+            Check(() => metadata.PinIds.Single() == pinId.Id);
+
+            var pin = Ct.Pin(pinId);
+            Check(() => IsCloseTo(pin.CreateUtc, uploadUtc));
+            Check(() => IsCloseTo(pin.LastActivityUtc, uploadUtc));
+            Check(() => pin.Cids.Count == 1);
+            Check(() => pin.Cids.Single() == cid.Id);
 
             var download = Ct.Download(cid);
 

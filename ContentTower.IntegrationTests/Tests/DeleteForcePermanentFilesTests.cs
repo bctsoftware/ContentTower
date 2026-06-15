@@ -6,14 +6,14 @@ namespace ContentTower.IntegrationTests.Tests
     {
         public override void Run()
         {
-            var (_, _, cid) = UploadRandom(StoreRequestType.PermanentFile);
+            var (_, _, cid, pinId) = UploadRandom(StoreType.Permanent);
 
             Check(() => Ct.Check(cid) == true);
 
             var normalDeleteFailed = false;
             try
             {
-                Ct.Delete(cid);
+                Ct.Delete(pinId);
             }
             catch
             {
@@ -23,7 +23,7 @@ namespace ContentTower.IntegrationTests.Tests
             Check(() => normalDeleteFailed == true);
             Check(() => Ct.Check(cid) == true);
 
-            Ct.Delete(cid, force: true);
+            Ct.Delete(pinId, force: true);
 
             Check(() => Ct.Check(cid) == false);
         }
