@@ -14,7 +14,7 @@
         private void Run(int length)
         {
             var uploaded = DataHelper.GetRandomData(length);
-            var cid = Ct.Upload("name", "type", uploaded);
+            var (cid, pinId) = Ct.UploadNewPin("name", "type", uploaded);
 
             Check(() => Ct.Check(cid));
 
@@ -23,7 +23,7 @@
             Check(() => IsEqual(uploaded, downloaded));
             Log($"LargeFile Check passed for {length} bytes");
 
-            Ct.Delete(cid);
+            Ct.Delete(pinId);
         }
     }
 }

@@ -12,6 +12,7 @@
             var (cid, pinId)= Ct.UploadNewPin(name, type, data);
 
             var metadata = Ct.Metadata(cid);
+            Check(() => Ct.Check(cid));
             Check(() => metadata.Cid == cid.Id);
             Check(() => metadata.Name == name);
             Check(() => metadata.ContentType == type);
@@ -20,6 +21,7 @@
             Check(() => metadata.PinIds.Single() == pinId.Id);
 
             var pin = Ct.Pin(pinId);
+            Check(() => Ct.Check(pinId));
             Check(() => IsCloseTo(pin.CreateUtc, uploadUtc));
             Check(() => IsCloseTo(pin.LastActivityUtc, uploadUtc));
             Check(() => pin.Cids.Count == 1);

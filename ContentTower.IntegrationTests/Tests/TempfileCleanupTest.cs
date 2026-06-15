@@ -14,6 +14,7 @@ namespace ContentTower.IntegrationTests.Tests
             SleepCleanupInterval();
 
             // Untouching temp store cleans up quickly.
+            Check(() => Ct.Check(pinId) == false);
             Check(() => Ct.Check(cid) == false);
         }
     }

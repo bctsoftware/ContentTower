@@ -15,12 +15,14 @@ namespace ContentTower.IntegrationTests.Tests
             
             // Touching a default store does not affect storage time.
             Check(() => Ct.Check(cid) == true);
+            Check(() => Ct.Check(pinId) == true);
             Check(() => Ct.Download(cid).Length > 0);
 
             Sleep(half);
             SleepCleanupInterval();
 
             Check(() => Ct.Check(cid) == false);
+            Check(() => Ct.Check(pinId) == false);
         }
     }
 }

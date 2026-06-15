@@ -1,4 +1,5 @@
 ﻿using ContentTowerOpenAPIClient;
+using Newtonsoft.Json;
 
 namespace ContentTower.IntegrationTests
 {
@@ -90,11 +91,7 @@ namespace ContentTower.IntegrationTests
 
         public bool Check(PinId pinId)
         {
-            try
-            {
-
-            }
-            var result = On(api => api.PinGETAsync(pinId.Id));
+            var result = On(api => api.Check2Async(pinId.Id));
             log.Log($"Checked {pinId} => {result}");
             return result;
         }
@@ -104,6 +101,32 @@ namespace ContentTower.IntegrationTests
             var result = On(api => api.MetadataAsync(cid.Id));
             log.Log($"Content {cid} => '{result.Name}'");
             return result;
+        }
+
+        public PinId CreatePin(StoreType type)
+        {
+            return CreatePin(type, Array.Empty<Cid>());
+        }
+
+        public PinId CreatePin(StoreType type, Cid[] cids)
+        {
+            var pinId = new PinId(On(api => api.PinPOSTAsync(new CreatePinRequest
+            {
+                StoreType = type,
+                Cids = cids.Select(c => c.Id).ToArray()
+            })));
+            log.Log($"CreatePin => {pinId}");
+            return pinId;
+        }
+
+        public void PatchPin(Cid[] addCids, Cid[] removeCids)
+        {
+            On(api => api.PinPATCHAsync(new UpdatePinRequest
+            {
+                AddCids = addCids.Select(c => c.Id).ToArray(),
+                RemoveCids = removeCids.Select(c => c.Id).ToArray()
+            }));
+            log.Log($"PatchPin");
         }
 
         public PinView Pin(PinId pinId)

@@ -21,10 +21,14 @@ namespace ContentTower.IntegrationTests.Tests
             Sleep(half);
             Check(() => Ct.Download(cid).Length > 0);
 
+            Check(() => Ct.Check(pinId) == true);
+            Check(() => Ct.Check(cid) == true);
+
             Sleep(span);
             SleepCleanupInterval();
 
             // Then it cleans up.
+            Check(() => Ct.Check(pinId) == false);
             Check(() => Ct.Check(cid) == false);
         }
     }
