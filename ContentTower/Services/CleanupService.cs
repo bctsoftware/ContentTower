@@ -63,11 +63,14 @@ namespace ContentTower.Services
             while (!Ct.IsCancellationRequested)
             {
                 await Step();
+                await timeService.Sleep(longSleep, Ct);
             }
         }
 
         private async Task Step()
         {
+            logger.LogTrace("Cleanup steps activating...");
+
             pinCleanupWorker.Step(Ct);
             await timeService.Sleep(stepSleep, Ct);
             if (Ct.IsCancellationRequested) return;

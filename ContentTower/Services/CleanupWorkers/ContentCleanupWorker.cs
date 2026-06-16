@@ -26,12 +26,12 @@
             foreach (var file in files)
             {
                 ct.ThrowIfCancellationRequested();
-                DeleteIfMarkedAndUnpinned(file);
+                if (DeleteIfMarkedAndUnpinned(file)) continue;
                 MarkIfUnpinned(file);
             }
         }
 
-        private void DeleteIfMarkedAndUnpinned(FileMetadata file)
+        private bool DeleteIfMarkedAndUnpinned(FileMetadata file)
         {
             if (markedForDelete.Contains(file.Cid))
             {
@@ -40,12 +40,14 @@
                 if (file.PinIds.Count == 0)
                 {
                     deleteService.DeleteFile(file);
+                    return true;
                 }
                 else
                 {
                     logger.LogTrace("Delete of {0} was cancelled.", file.Cid);
                 }
             }
+            return false;
         }
 
         private void MarkIfUnpinned(FileMetadata file)

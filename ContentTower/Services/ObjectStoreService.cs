@@ -7,10 +7,15 @@ namespace ContentTower.Services
     public interface IObjectStoreService
     {
         bool Exists(IId id);
-        void CreateOrUpdateObject<T>(IId id, Action<T> onObj) where T : new();
-        T ReadObject<T>(IId id);
+        void CreateOrUpdateObject<T>(IId id, Action<T> onObj) where T : IStorable, new();
+        T ReadObject<T>(IId id) where T : IStorable, new();
         void DeleteObject(IId id);
-        void IterateObjects<T>(string prefix, Action<T> onObject);
+        void IterateObjects<T>(string prefix, Action<T> onObject) where T : IStorable, new();
+    }
+
+    public interface IStorable
+    {
+        bool Valid();
     }
 
     public class ObjectStoreService : IObjectStoreService
@@ -40,36 +45,38 @@ namespace ContentTower.Services
             }
         }
 
-        public void IterateObjects<T>(string prefix, Action<T> onObject)
+        public void IterateObjects<T>(string prefix, Action<T> onObject) where T : IStorable, new()
         {
             var files = fs.DirectoryGetFiles(options.DataPath);
             foreach (var file in files)
             {
-                if (file.StartsWith(prefix) && file.ToLowerInvariant().EndsWith(".json"))
+                var filename = Path.GetFileName(file);
+                if (filename.StartsWith(prefix) && file.ToLowerInvariant().EndsWith(".json"))
                 {
                     TryJson(file, onObject);
                 }
             }
         }
 
-        public T ReadObject<T>(IId id)
+        public T ReadObject<T>(IId id) where T : IStorable, new()
         {
             var obj = GetJson<T>(GetJsonFilepath(id));
             if (obj == null) throw new Exception("Failed to load object for " + id);
             return obj;
         }
 
-        public void CreateOrUpdateObject<T>(IId id, Action<T> onObj) where T : new()
+        public void CreateOrUpdateObject<T>(IId id, Action<T> onObj) where T : IStorable, new()
         {
             lock (mutateLock)
             {
                 var obj = GetOrCreate<T>(id);
                 onObj(obj);
+                if (!obj.Valid()) throw new Exception("Object validation failed");
                 fs.WriteAllText(GetJsonFilepath(id), JsonConvert.SerializeObject(obj));
             }
         }
 
-        private T GetOrCreate<T>(IId id) where T : new()
+        private T GetOrCreate<T>(IId id) where T : IStorable, new()
         {
             if (Exists(id)) return ReadObject<T>(id);
             return new T();

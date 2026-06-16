@@ -33,26 +33,29 @@ namespace ContentTower.Services
 
         public void Attach(PinId[] pinIds, Cid cid)
         {
+            if (pinIds.Length == 0) return;
             AddPinsToFile(pinIds, cid);
             foreach (var pinId in pinIds)
             {
                 AddCidToPin(pinId, cid);
             }
-            logger.LogInformation("Attached pins {0} to cid {1}", pinIds, cid);
+            logger.LogInformation("Attached {0} pins to cid {1}", pinIds.Length, cid);
         }
 
         public void Attach(PinId pinId, Cid[] cids)
         {
+            if (cids.Length == 0) return;
             AddCidsToPin(pinId, cids);
             foreach (var cid in cids)
             {
                 AddPinToCid(pinId, cid);
             }
-            logger.LogInformation("Attached pin {0} to cids {1}", pinId, cids);
+            logger.LogInformation("Attached pin {0} to {1} cids", pinId, cids.Length);
         }
 
         public void Detach(PinId pinId, Cid[] cids)
         {
+            if (cids.Length == 0) return;
             RemoveCidsFromPin(pinId, cids);
             foreach (var cid in cids)
             {
@@ -119,7 +122,11 @@ namespace ContentTower.Services
                 pin.StoreType = type;
             });
             presenceService.SetPresence(pinId);
-            logger.LogInformation("Created new pin {0} for {1} contents.", pinId, cids.Length);
+            foreach (var cid in cids)
+            {
+                AddPinToCid(pinId, cid);
+            }
+            logger.LogInformation("Created new pin {0} of type {1} for {2} contents.", pinId, type, cids.Length);
             return pinId;
         }
 
@@ -194,6 +201,7 @@ namespace ContentTower.Services
 
         private void RemovePinFromCid(PinId pinId, Cid cid)
         {
+            if (!objectStoreService.Exists(cid)) return;
             try
             {
                 objectStoreService.CreateOrUpdateObject<FileMetadata>(cid, file =>

@@ -113,12 +113,7 @@ namespace ContentTower.IntegrationTests
 
         protected void SleepCleanupInterval()
         {
-            // The interval is used between each step:
-            // cleanup pins,
-            // mark inpinned data,
-            // cleanup marked data,
-            // cleanup datafiles without matching metadata files
-            Thread.Sleep(TimeSpan.FromSeconds(Options.CleanupIntervalSeconds) * 4.0);
+            Thread.Sleep(TimeSpan.FromSeconds(Options.CleanupIntervalSeconds) * 2.0);
         }
     }
 }
