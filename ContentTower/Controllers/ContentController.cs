@@ -6,13 +6,13 @@ namespace ContentTower.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class DownloadController : ControllerBase
+    public class ContentController : ControllerBase
     {
         private readonly IPresenceService presenceService;
         private readonly ILoadService loadService;
         private readonly IPinService pinService;
 
-        public DownloadController(IPresenceService presenceService, ILoadService loadService, IPinService pinService)
+        public ContentController(IPresenceService presenceService, ILoadService loadService, IPinService pinService)
         {
             this.presenceService = presenceService;
             this.loadService = loadService;
@@ -20,7 +20,7 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
-        [Route("download/{cid}")]
+        [Route("{cid}/download")]
         [EndpointDescription("Downloads content as a stream.")]
         [ProducesResponseType<Stream>(StatusCodes.Status200OK, MediaTypeNames.Application.Octet)]
         public Stream Download([FromRoute] string cid)
@@ -36,7 +36,7 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
-        [Route("metadata/{cid}")]
+        [Route("{cid}/metadata")]
         [EndpointDescription("Retrieves metadata for content.")]
         public ContentView Metadata([FromRoute] string cid)
         {
@@ -47,7 +47,7 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
-        [Route("check/{cid}")]
+        [Route("{cid}/check")]
         [EndpointDescription("Checks whether the content exists in this service.")]
         public bool Check([FromRoute] string cid)
         {

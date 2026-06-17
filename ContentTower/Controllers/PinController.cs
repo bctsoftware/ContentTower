@@ -50,7 +50,7 @@ namespace ContentTower.Controllers
         }
 
         [HttpGet]
-        [Route("check/{pinId}")]
+        [Route("{pinId}/check")]
         [EndpointDescription("Checks whether the pin exists in this service.")]
         public bool Check([FromRoute] string pinId)
         {
@@ -71,7 +71,7 @@ namespace ContentTower.Controllers
         }
 
         [HttpDelete]
-        [Route("force/{pinId}")]
+        [Route("{pinId}/force")]
         [EndpointDescription("Deletes a pin immediately. Explicit override for pins with StoreType 'Permanent'.")]
         public void DeleteForce([FromRoute] string pinId)
         {

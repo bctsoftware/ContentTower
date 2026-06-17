@@ -10,10 +10,10 @@
     }
   ],
   "paths": {
-    "/Download/download/{cid}": {
+    "/Content/{cid}/download": {
       "get": {
         "tags": [
-          "Download"
+          "Content"
         ],
         "description": "Downloads content as a stream.",
         "parameters": [
@@ -40,10 +40,10 @@
         }
       }
     },
-    "/Download/metadata/{cid}": {
+    "/Content/{cid}/metadata": {
       "get": {
         "tags": [
-          "Download"
+          "Content"
         ],
         "description": "Retrieves metadata for content.",
         "parameters": [
@@ -80,10 +80,10 @@
         }
       }
     },
-    "/Download/check/{cid}": {
+    "/Content/{cid}/check": {
       "get": {
         "tags": [
-          "Download"
+          "Content"
         ],
         "description": "Checks whether the content exists in this service.",
         "parameters": [
@@ -262,7 +262,7 @@
         }
       }
     },
-    "/Pin/check/{pinId}": {
+    "/Pin/{pinId}/check": {
       "get": {
         "tags": [
           "Pin"
@@ -302,7 +302,7 @@
         }
       }
     },
-    "/Pin/force/{pinId}": {
+    "/Pin/{pinId}/force": {
       "delete": {
         "tags": [
           "Pin"
@@ -583,7 +583,11 @@
         }
       },
       "QuotaState": {
-        "type": "integer"
+        "enum": [
+          "Nominal",
+          "Pressure",
+          "Full"
+        ]
       },
       "StoreType": {
         "enum": [
@@ -661,7 +665,7 @@
   },
   "tags": [
     {
-      "name": "Download"
+      "name": "Content"
     },
     {
       "name": "Pin"

@@ -1,6 +1,7 @@
 ﻿using ContentTower.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
 
 namespace ContentTower.Controllers
 {
@@ -40,6 +41,7 @@ namespace ContentTower.Controllers
         public QuotaState State { get; set; }
     }
 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum QuotaState
     {
         Nominal,
