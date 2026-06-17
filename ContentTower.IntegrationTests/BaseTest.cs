@@ -36,8 +36,17 @@ namespace ContentTower.IntegrationTests
             {
                 Fail("Exception: " + ex);
             }
-            if (failures.Count > 0) Log($"Finished with {failures.Count} failures.");
+            Log("");
+            if (failures.Count > 0)
+            {
+                Log($"Finished with {failures.Count} failures:");
+                foreach (var f in failures)
+                {
+                    Log($"   - {f}");
+                }
+            }
             else Log("Finished successfully.");
+            Log("");
         }
 
         protected ILog Logger { get; private set; } = null!;
@@ -106,14 +115,16 @@ namespace ContentTower.IntegrationTests
             return (name, type, cid, pinId);
         }
 
-        protected void Sleep(TimeSpan half)
+        protected void Sleep(TimeSpan span)
         {
-            Thread.Sleep(half);
+            Log(nameof(Sleep) + ": " + span.TotalSeconds + " seconds");
+            Thread.Sleep(span);
         }
 
         protected void SleepCleanupInterval()
         {
-            Thread.Sleep(TimeSpan.FromSeconds(Options.CleanupIntervalSeconds) * 2.0);
+            Log(nameof(SleepCleanupInterval));
+            Thread.Sleep(TimeSpan.FromSeconds(Options.CleanupIntervalSeconds) * 3.0);
         }
     }
 }

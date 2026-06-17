@@ -1,29 +1,30 @@
 ﻿using ContentTower.Services;
-using ContentTower.System;
 using Moq;
 
 namespace ContentTower.Tests.Services
 {
     internal class LoadServiceTests
     {
-        private readonly Mock<IFileSystem> mockFileSystem;
+        private readonly Mock<IObjectStoreService> mockObjectStoreService;
+        private readonly Mock<IDataStoreService> mockDataStoreService;
         private readonly Cid cid = new Cid("a");
         private readonly LoadService loadService;
 
         public LoadServiceTests()
         {
-            mockFileSystem = new Mock<IFileSystem>();
+            mockObjectStoreService = new Mock<IObjectStoreService>();
+            mockDataStoreService = new Mock<IDataStoreService>();
 
-            loadService = new LoadService(mockFileSystem.Object);
+            loadService = new LoadService(mockObjectStoreService.Object, mockDataStoreService.Object);
         }
 
         [Test]
         public async Task ReadMetadata_FSReadObject()
         {
             var expected = new FileMetadata();
-            mockFileSystem.Setup(s => s.ReadObject<FileMetadata>(cid)).ReturnsAsync(expected);
+            mockObjectStoreService.Setup(s => s.ReadObject<FileMetadata>(cid)).Returns(expected);
 
-            var actual = await loadService.ReadMetadata(cid);
+            var actual = loadService.ReadMetadata(cid);
 
             await Assert.That(actual).IsSameReferenceAs(expected);
         }
@@ -32,9 +33,9 @@ namespace ContentTower.Tests.Services
         public async Task ReadData_FSReadData()
         {
             var expected = new MemoryStream();
-            mockFileSystem.Setup(s => s.ReadData(cid)).ReturnsAsync(expected);
+            mockDataStoreService.Setup(s => s.ReadData(cid)).Returns(expected);
 
-            var actual = await loadService.ReadData(cid);
+            var actual = loadService.ReadData(cid);
 
             await Assert.That(actual).IsSameReferenceAs(expected);
         }

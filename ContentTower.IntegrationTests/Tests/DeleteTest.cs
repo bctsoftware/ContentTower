@@ -17,6 +17,7 @@ namespace ContentTower.IntegrationTests.Tests
             Ct.Delete(defaultPinId);
             Ct.Delete(tempPinId);
 
+            Log("Both default and temp pins are deleted immediately at request.");
             Check(() => Ct.Check(defaultCid) == true);
             Check(() => Ct.Check(defaultPinId) == false);
             Check(() => Ct.Check(tempCid) == true);
@@ -24,6 +25,7 @@ namespace ContentTower.IntegrationTests.Tests
 
             SleepCleanupInterval();
 
+            Log("The content is cleaned up later.");
             Check(() => Ct.Check(defaultCid) == false);
             Check(() => Ct.Check(defaultPinId) == false);
             Check(() => Ct.Check(tempCid) == false);

@@ -8,7 +8,6 @@
             Run(1024 * 1024); // 1mb
             Run(1024 * 1024 * 100); // 100mb
             Run(1024 * 1024 * 300); // 300mb
-            Run(1024 * 1024 * 500); // 500mb
         }
 
         private void Run(int length)

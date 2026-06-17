@@ -1,25 +1,22 @@
 using ContentTower.Services;
-using ContentTower.System;
 using Moq;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace ContentTower.Tests.Services;
 
 public class PresenceServiceTests
 {
-    private readonly Mock<IFileSystem> mockFileSystem;
+    private readonly Mock<IObjectStoreService> mockObjectStoreService;
 
     public PresenceServiceTests()
     {
-        mockFileSystem = new Mock<IFileSystem>();
+        mockObjectStoreService = new Mock<IObjectStoreService>();
     }
 
     #region Helper Methods
 
     private PresenceService CreatePresenceService()
     {
-        return new PresenceService(mockFileSystem.Object);
+        return new PresenceService(mockObjectStoreService.Object);
     }
 
     private Cid CreateTestCid(string hash = "ct+test+cid")
@@ -46,15 +43,15 @@ public class PresenceServiceTests
     {
         var cid = CreateTestCid();
         var service = CreatePresenceService();
-        
+
         service.SetPresence(cid);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
 
         var result = service.IsPresent(cid);
 
         await Assert.That(result).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     #endregion
@@ -65,60 +62,60 @@ public class PresenceServiceTests
     public async Task IsPresent_WhenCidNotInCache_ChecksFileSystem()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         service.IsPresent(cid);
 
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
     }
 
     [Test]
     public async Task IsPresent_WhenCidExistsOnFileSystem_ReturnsTrueAndCachesIt()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(true);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(true);
         var service = CreatePresenceService();
 
         var result = service.IsPresent(cid);
 
         await Assert.That(result).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
-        
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
+
         // Verify it's now cached by calling IsPresent again
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         var secondResult = service.IsPresent(cid);
         await Assert.That(secondResult).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     [Test]
     public async Task IsPresent_WhenCidDoesNotExistOnFileSystem_ReturnsFalse()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         var result = service.IsPresent(cid);
 
         await Assert.That(result).IsFalse();
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
     }
 
     [Test]
     public async Task IsPresent_WhenCidDoesNotExistOnFileSystem_DoesNotCacheIt()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         service.IsPresent(cid);
 
-        mockFileSystem.Reset();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Reset();
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         service.IsPresent(cid);
 
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
     }
 
     #endregion
@@ -130,28 +127,28 @@ public class PresenceServiceTests
     {
         var cid1 = CreateTestCid("ct+hash+1");
         var cid2 = CreateTestCid("ct+hash+2");
-        mockFileSystem.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
         var service = CreatePresenceService();
 
         service.IsPresent(cid1);
         service.IsPresent(cid2);
 
-        mockFileSystem.Verify(fs => fs.Exists(cid1), Times.Once);
-        mockFileSystem.Verify(fs => fs.Exists(cid2), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid1), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid2), Times.Once);
     }
 
     [Test]
     public async Task IsPresent_WithSameCidMultipleTimes_ChecksFileSystemOnlyOnce()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(true);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(true);
         var service = CreatePresenceService();
 
         service.IsPresent(cid);
         service.IsPresent(cid);
         service.IsPresent(cid);
 
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
     }
 
     #endregion
@@ -162,37 +159,37 @@ public class PresenceServiceTests
     public async Task SetPresence_AddsCidToExistsCache()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         service.SetPresence(cid);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         var result = service.IsPresent(cid);
         await Assert.That(result).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     [Test]
     public async Task SetPresence_RemovesFromDoesntExistCache()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         // First clear presence to add to doesntExist cache
         service.ClearPresence(cid);
-        
+
         // Verify it reports as not present
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         await Assert.That(service.IsPresent(cid)).IsFalse();
 
         service.SetPresence(cid);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         var result = service.IsPresent(cid);
         await Assert.That(result).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     [Test]
@@ -207,11 +204,11 @@ public class PresenceServiceTests
         service.SetPresence(cid2);
         service.SetPresence(cid3);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         await Assert.That(service.IsPresent(cid1)).IsTrue();
         await Assert.That(service.IsPresent(cid2)).IsTrue();
         await Assert.That(service.IsPresent(cid3)).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     [Test]
@@ -224,10 +221,10 @@ public class PresenceServiceTests
         service.SetPresence(cid);
         service.SetPresence(cid);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         var result = service.IsPresent(cid);
         await Assert.That(result).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     #endregion
@@ -238,17 +235,17 @@ public class PresenceServiceTests
     public async Task ClearPresence_RemovesCidFromExistsCache()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         service.SetPresence(cid);
-        
+
         service.ClearPresence(cid);
 
-        mockFileSystem.Reset();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Reset();
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         service.IsPresent(cid);
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
     }
 
     [Test]
@@ -304,19 +301,19 @@ public class PresenceServiceTests
     {
         var service = CreatePresenceService();
         var cids = CreateMultipleTestCids(100001);
-        mockFileSystem.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
 
         foreach (var cid in cids)
         {
             service.SetPresence(cid);
         }
 
-        mockFileSystem.Reset();
-        mockFileSystem.Setup(fs => fs.Exists(cids[0])).Returns(false);
+        mockObjectStoreService.Reset();
+        mockObjectStoreService.Setup(fs => fs.Exists(cids[0])).Returns(false);
         service.IsPresent(cids[0]);
-        
+
         // FileSystem should be checked because cache was cleared
-        mockFileSystem.Verify(fs => fs.Exists(cids[0]), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cids[0]), Times.Once);
     }
 
     [Test]
@@ -324,18 +321,18 @@ public class PresenceServiceTests
     {
         var service = CreatePresenceService();
         var cids = CreateMultipleTestCids(100000);
-        mockFileSystem.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
 
         foreach (var cid in cids)
         {
             service.SetPresence(cid);
         }
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         service.IsPresent(cids[0]);
-        
+
         // FileSystem should NOT be checked because cache is still valid
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     #endregion
@@ -352,10 +349,10 @@ public class PresenceServiceTests
         service.ClearPresence(cid);
         service.SetPresence(cid);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         var result = service.IsPresent(cid);
         await Assert.That(result).IsTrue();
-        mockFileSystem.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.IsAny<Cid>()), Times.Never);
     }
 
     [Test]
@@ -397,12 +394,12 @@ public class PresenceServiceTests
     public async Task IsPresent_PassesCorrectCidToFileSystemExists()
     {
         var cid = CreateTestCid("ct+specific+hash");
-        mockFileSystem.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
         var service = CreatePresenceService();
 
         service.IsPresent(cid);
 
-        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid.Id)), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid.Id)), Times.Once);
     }
 
     [Test]
@@ -410,14 +407,14 @@ public class PresenceServiceTests
     {
         var cid1 = CreateTestCid("ct+hash+1");
         var cid2 = CreateTestCid("ct+hash+2");
-        mockFileSystem.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(It.IsAny<Cid>())).Returns(false);
         var service = CreatePresenceService();
 
         service.IsPresent(cid1);
         service.IsPresent(cid2);
 
-        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid1.Id)), Times.Once);
-        mockFileSystem.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid2.Id)), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid1.Id)), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(It.Is<Cid>(c => c.Id == cid2.Id)), Times.Once);
     }
 
     #endregion
@@ -428,7 +425,7 @@ public class PresenceServiceTests
     public async Task IsPresent_ConsistentReturnValues()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(true);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(true);
         var service = CreatePresenceService();
 
         var firstCall = service.IsPresent(cid);
@@ -445,8 +442,8 @@ public class PresenceServiceTests
     {
         var presentCid = CreateTestCid("ct+exists");
         var notPresentCid = CreateTestCid("ct+doesnt+exist");
-        mockFileSystem.Setup(fs => fs.Exists(presentCid)).Returns(true);
-        mockFileSystem.Setup(fs => fs.Exists(notPresentCid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(presentCid)).Returns(true);
+        mockObjectStoreService.Setup(fs => fs.Exists(notPresentCid)).Returns(false);
         var service = CreatePresenceService();
 
         var presentResult = service.IsPresent(presentCid);
@@ -500,7 +497,7 @@ public class PresenceServiceTests
     public async Task IsPresent_WithEmptyCidHash_Works()
     {
         var cid = CreateTestCid("");
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service = CreatePresenceService();
 
         var result = service.IsPresent(cid);
@@ -516,7 +513,7 @@ public class PresenceServiceTests
 
         service.SetPresence(cid);
 
-        mockFileSystem.Reset();
+        mockObjectStoreService.Reset();
         var result = service.IsPresent(cid);
         await Assert.That(result).IsTrue();
     }
@@ -529,16 +526,16 @@ public class PresenceServiceTests
     public async Task MultipleServiceInstances_HaveSeparateCaches()
     {
         var cid = CreateTestCid();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         var service1 = CreatePresenceService();
         var service2 = CreatePresenceService();
 
         service1.SetPresence(cid);
 
-        mockFileSystem.Reset();
-        mockFileSystem.Setup(fs => fs.Exists(cid)).Returns(false);
+        mockObjectStoreService.Reset();
+        mockObjectStoreService.Setup(fs => fs.Exists(cid)).Returns(false);
         service2.IsPresent(cid);
-        mockFileSystem.Verify(fs => fs.Exists(cid), Times.Once);
+        mockObjectStoreService.Verify(fs => fs.Exists(cid), Times.Once);
     }
 
     #endregion

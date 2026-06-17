@@ -31,3 +31,6 @@ services:
     container_name: contenttowerintegrationtests
     environment:
       ContentTowerEndpoint: http://contenttower:8080
+      TestLogsFolder: "/app/testlogs"
+    volumes:
+      - ./integration_test_logs:/app/testlogs

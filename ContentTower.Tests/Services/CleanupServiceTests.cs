@@ -1,4 +1,5 @@
 using ContentTower.Services;
+using ContentTower.Services.CleanupWorkers;
 using ContentTower.System;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,272 +8,195 @@ using Moq;
 
 namespace ContentTower.Tests.Services;
 
-public class CleanupServiceTests
+public class CleanupServiceTests : IDisposable
 {
-    private readonly int cleanupIntervalSeconds = 123;
     private readonly Mock<ILogger<CleanupService>> mockLogger;
-    private readonly Mock<IOptions<StorageOptions>> mockOptions;
-    private readonly Mock<IHostApplicationLifetime> mockAppLifetime;
-    private readonly Mock<IFileSystem> mockFileSystem;
     private readonly Mock<ITime> mockTimeService;
-    private readonly Mock<ICleanupWorker> mockCleanupWorker;
+    private readonly Mock<IHostApplicationLifetime> mockAppLifetime;
+    private readonly Mock<IPinCleanupWorker> mockPinWorker;
+    private readonly Mock<IContentCleanupWorker> mockContentWorker;
+    private readonly Mock<IDatafileCleanupWorker> mockDatafileWorker;
+    private readonly CancellationTokenSource appStoppingCts;
+
+    private static readonly TimeSpan LongSleep = TimeSpan.FromSeconds(999);
+    private static readonly TimeSpan StepSleep = TimeSpan.FromMilliseconds(100);
 
     public CleanupServiceTests()
     {
         mockLogger = new Mock<ILogger<CleanupService>>();
-        mockOptions = new Mock<IOptions<StorageOptions>>();
-        mockAppLifetime = new Mock<IHostApplicationLifetime>();
-        mockFileSystem = new Mock<IFileSystem>();
         mockTimeService = new Mock<ITime>();
-        mockCleanupWorker = new Mock<ICleanupWorker>();
+        mockAppLifetime = new Mock<IHostApplicationLifetime>();
+        mockPinWorker = new Mock<IPinCleanupWorker>();
+        mockContentWorker = new Mock<IContentCleanupWorker>();
+        mockDatafileWorker = new Mock<IDatafileCleanupWorker>();
+        appStoppingCts = new CancellationTokenSource();
+        mockAppLifetime.SetupGet(al => al.ApplicationStopping).Returns(appStoppingCts.Token);
     }
 
-    #region Test Helpers
+    public void Dispose() => appStoppingCts.Dispose();
 
-    private CleanupService CreateCleanupService()
+    #region Helpers
+
+    private CleanupService CreateService() => new CleanupService(
+        mockLogger.Object,
+        Options.Create(new StorageOptions { CleanupIntervalSeconds = (int)LongSleep.TotalSeconds }),
+        mockAppLifetime.Object,
+        mockTimeService.Object,
+        mockPinWorker.Object,
+        mockContentWorker.Object,
+        mockDatafileWorker.Object
+    );
+
+    // Sets up the long sleep to cancel the app token and signal the TCS, then return completed.
+    private void SetupLongSleepCancelsAndSignals(TaskCompletionSource tcs)
     {
-        mockOptions.Setup(o => o.Value).Returns(new StorageOptions
-        {
-            DataPath = "/data",
-            Quota = 1000000,
-            CleanupIntervalSeconds = cleanupIntervalSeconds,
-            StoreDurationDefaultNominalSeconds = 86400,      // 1 day
-            StoreDurationDefaultPressureSeconds = 43200,     // 12 hours
-            StoreDurationTemporaryNominalSeconds = 7200,     // 2 hours
-            StoreDurationTemporaryPressureSeconds = 3600     // 1 hour
-        });
-
-        return new CleanupService(
-            mockLogger.Object,
-            mockOptions.Object,
-            mockAppLifetime.Object,
-            mockFileSystem.Object,
-            mockTimeService.Object,
-            mockCleanupWorker.Object
-        );
+        mockTimeService
+            .Setup(t => t.Sleep(LongSleep, It.IsAny<CancellationToken>()))
+            .Callback<TimeSpan, CancellationToken>((_, _) => { appStoppingCts.Cancel(); tcs.TrySetResult(); })
+            .Returns(Task.CompletedTask);
     }
 
-    private FileMetadata CreateTestFile(
-        string cidHash = "test-file-1",
-        long length = 1000,
-        StoreType storeType = StoreType.Default)
+    // Sets up the long sleep to return a cancelled task (when token is already cancelled).
+    private void SetupLongSleepReturnsCanceled()
     {
-        return new FileMetadata
-        {
-            Cid = new Cid(cidHash),
-            Name = "test.txt",
-            ContentType = "text/plain",
-            Length = length,
-            StoreType = storeType,
-            UploadUtc = DateTime.UtcNow,
-            LastActivityUtc = DateTime.UtcNow
-        };
+        mockTimeService
+            .Setup(t => t.Sleep(LongSleep, It.IsAny<CancellationToken>()))
+            .Returns<TimeSpan, CancellationToken>((_, ct) => Task.FromCanceled(ct));
     }
 
-    private List<FileMetadata> CreateTestFileSet(int count)
+    private void SetupAllStepSleepsReturnImmediately()
     {
-        return Enumerable.Range(0, count)
-            .Select(i => CreateTestFile($"file-{i}", 1000 + (i * 100)))
-            .ToList();
+        mockTimeService
+            .Setup(t => t.Sleep(StepSleep, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
     }
+
+    private static Task WaitForSignal(TaskCompletionSource tcs) =>
+        tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
     #endregion
 
-    #region Tests - Start
+    #region Start
 
     [Test]
-    public async Task Start_CreatesNewCancellationTokenSource()
+    public async Task Start_LogsStartupMessage()
     {
-        var service = CreateCleanupService();
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        // The log call is synchronous before Task.Run, so no background-task waiting needed.
+        appStoppingCts.Cancel();
 
-        service.Start();
-        await Task.Delay(50); // Allow worker to start
+        CreateService().Start();
 
-        mockLogger.AssertLogged(LogLevel.Information, "Cleanup service starting");
+        mockLogger.Verify(
+            l => l.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Cleanup service starting")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+        await Task.CompletedTask;
     }
 
     [Test]
-    public async Task Start_StartsWorkerTask()
+    public async Task Start_WhenTokenPreCancelled_DoesNotCallAnyWorker()
     {
-        var service = CreateCleanupService();
-        var fillQueueCalled = false;
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback(() => fillQueueCalled = true)
-            .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        appStoppingCts.Cancel();
 
-        service.Start();
-        await Task.Delay(100); // Allow worker to execute
+        CreateService().Start();
 
-        await Assert.That(fillQueueCalled).IsTrue();
-    }
-
-    #endregion
-
-    #region Tests - Queue Processing - Empty Queue
-
-    [Test]
-    public async Task Step_WithEmptyQueue_CallsFillQueue()
-    {
-        var service = CreateCleanupService();
-        var fillQueueCalled = false;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback(() => fillQueueCalled = true)
-            .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        service.Start();
+        // Brief wait for the background task to start and exit its while-loop check.
         await Task.Delay(100);
-        
-        await Assert.That(fillQueueCalled).IsTrue();
-        mockFileSystem.Verify(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()), Times.AtLeastOnce);
+
+        mockPinWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Never);
+        mockContentWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Never);
+        mockDatafileWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
-    public async Task Step_WithEmptyQueue_SleepsAfterFilling()
+    public async Task Start_RunsFullIteration_CallsAllThreeWorkersOnce()
     {
-        var service = CreateCleanupService();
-        var sleepCalled = false;
-        var sleepDuration = TimeSpan.Zero;
+        var completionTcs = new TaskCompletionSource();
+        SetupAllStepSleepsReturnImmediately();
+        SetupLongSleepCancelsAndSignals(completionTcs);
 
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
+        CreateService().Start();
+        await WaitForSignal(completionTcs);
+
+        mockPinWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Once);
+        mockContentWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Once);
+        mockDatafileWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Start_WhenCancelledAfterPinStep_SkipsContentAndDatafileWorkers()
+    {
+        // Cancel inside the first stepSleep (after pin worker runs).
+        var signalTcs = new TaskCompletionSource();
+        mockTimeService
+            .Setup(t => t.Sleep(StepSleep, It.IsAny<CancellationToken>()))
+            .Callback<TimeSpan, CancellationToken>((_, _) => { appStoppingCts.Cancel(); signalTcs.TrySetResult(); })
             .Returns(Task.CompletedTask);
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback<TimeSpan, CancellationToken>((duration, _) =>
+        SetupLongSleepReturnsCanceled();
+
+        CreateService().Start();
+        await WaitForSignal(signalTcs);
+
+        // Pin worker was called before the first stepSleep; content and datafile are guarded
+        // by the IsCancellationRequested check that immediately follows the first sleep.
+        mockPinWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Once);
+        mockContentWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Never);
+        mockDatafileWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Start_WhenCancelledAfterContentStep_SkipsDatafileWorker()
+    {
+        // Cancel inside the second stepSleep (after content worker runs).
+        var signalTcs = new TaskCompletionSource();
+        var stepSleepCount = 0;
+        mockTimeService
+            .Setup(t => t.Sleep(StepSleep, It.IsAny<CancellationToken>()))
+            .Callback<TimeSpan, CancellationToken>((_, _) =>
             {
-                sleepCalled = true;
-                sleepDuration = duration;
+                if (++stepSleepCount == 2) { appStoppingCts.Cancel(); signalTcs.TrySetResult(); }
             })
             .Returns(Task.CompletedTask);
+        SetupLongSleepReturnsCanceled();
 
-        service.Start();
+        CreateService().Start();
+        await WaitForSignal(signalTcs);
+
+        // Content worker was called before the second stepSleep signal.
+        mockPinWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Once);
+        mockContentWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Once);
+        mockDatafileWorker.Verify(w => w.Step(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Start_WhenTaskCanceledExceptionThrown_DoesNotLogError()
+    {
+        // Signal from the pin worker so we know the background task started.
+        var startedTcs = new TaskCompletionSource();
+        mockPinWorker
+            .Setup(w => w.Step(It.IsAny<CancellationToken>()))
+            .Callback<CancellationToken>(_ => startedTcs.TrySetResult());
+        mockTimeService
+            .Setup(t => t.Sleep(StepSleep, It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException(new TaskCanceledException()));
+
+        CreateService().Start();
+        await WaitForSignal(startedTcs);
+        // Allow Worker() time to catch the TaskCanceledException and return.
         await Task.Delay(100);
-        
-        await Assert.That(sleepCalled).IsTrue();
-        await Assert.That(sleepDuration.TotalSeconds).IsEqualTo(cleanupIntervalSeconds); // Should be 10 minutes
-        mockTimeService.Verify(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-    }
 
-    #endregion
-
-    #region Tests - Queue Processing - Non-Empty Queue
-
-    [Test]
-    public async Task Step_WithQueuedItems_ProcessesFirstItem()
-    {
-        var service = CreateCleanupService();
-        var files = CreateTestFileSet(3);
-        var processedItems = new List<FileMetadata>();
-        var stepCount = 0;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(action =>
-            {
-                stepCount++;
-                if (stepCount == 1)
-                {
-                    foreach (var file in files)
-                    {
-                        action(file);
-                    }
-                }
-            })
-            .Returns(Task.CompletedTask);
-
-        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>()))
-            .Callback<FileMetadata>(processedItems.Add)
-            .Returns(Task.CompletedTask);
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        service.Start();
-        await Task.Delay(200);
-
-        await Assert.That(processedItems).Contains(files[0]);
-
-        mockTimeService.Verify(t => t.Sleep(TimeSpan.FromMilliseconds(100), It.IsAny<CancellationToken>()), Times.Exactly(files.Count));
-    }
-
-    [Test]
-    public async Task Step_WithMultipleItems_ProcessesAllInOrder()
-    {
-        var service = CreateCleanupService();
-        var files = CreateTestFileSet(3);
-        var processedItems = new List<FileMetadata>();
-        var fillQueueCallCount = 0;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(action =>
-            {
-                fillQueueCallCount++;
-                if (fillQueueCallCount == 1)
-                {
-                    foreach (var file in files)
-                    {
-                        action(file);
-                    }
-                }
-            })
-            .Returns(Task.CompletedTask);
-
-        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>()))
-            .Callback<FileMetadata>(processedItems.Add)
-            .Returns(Task.CompletedTask);
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        service.Start();
-        await Task.Delay(300);
-
-        await Assert.That(processedItems.Count).IsEqualTo(3);
-        await Assert.That(processedItems[0].Cid.Id).IsEqualTo(files[0].Cid.Id);
-        await Assert.That(processedItems[1].Cid.Id).IsEqualTo(files[1].Cid.Id);
-        await Assert.That(processedItems[2].Cid.Id).IsEqualTo(files[2].Cid.Id);
-    }
-
-    [Test]
-    public async Task Step_RemovesProcessedItemFromQueue()
-    {
-        var service = CreateCleanupService();
-        var file = CreateTestFile();
-        var queueRemovals = 0;
-        var fillQueueCalled = false;
-
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(action =>
-            {
-                if (!fillQueueCalled)
-                {
-                    fillQueueCalled = true;
-                    action(file);
-                }
-            })
-            .Returns(Task.CompletedTask);
-
-        mockCleanupWorker.Setup(cw => cw.ProcessItem(It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-
-        mockTimeService.Setup(ts => ts.Sleep(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Callback<TimeSpan, CancellationToken>((duration, ct) =>
-            {
-                if (duration.TotalSeconds == cleanupIntervalSeconds) // Long sleep after fill
-                    queueRemovals++;
-            })
-            .Returns(Task.CompletedTask);
-
-        service.Start();
-        await Task.Delay(150);
-        
-        await Assert.That(queueRemovals).IsGreaterThan(0);
+        mockLogger.Verify(
+            l => l.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
     }
 
     #endregion

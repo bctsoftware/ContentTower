@@ -1,5 +1,4 @@
 ﻿using ContentTowerOpenAPIClient;
-using Newtonsoft.Json;
 
 namespace ContentTower.IntegrationTests
 {
@@ -7,7 +6,7 @@ namespace ContentTower.IntegrationTests
     {
         private readonly openapiClient client;
         private readonly ILog log;
-        private readonly Lock _lock = new Lock();
+        private static readonly Lock _lock = new Lock();
 
         public Client(string baseUrl, ILog log)
         {
@@ -63,7 +62,7 @@ namespace ContentTower.IntegrationTests
             }));
             var cid = new Cid(response.Cid);
             var pinId = new PinId(response.NewPinIds.Single());
-            log.Log($"Uploaded {data.Length} bytes '{name}' => {cid},{pinId}");
+            log.Log($"Uploaded {data.Length} bytes '{name}' with type {storeType} => {cid},{pinId}");
             return (cid, pinId);
         }
 
@@ -110,19 +109,21 @@ namespace ContentTower.IntegrationTests
 
         public PinId CreatePin(StoreType type, Cid[] cids)
         {
-            var pinId = new PinId(On(api => api.PinPOSTAsync(new CreatePinRequest
+            var response = On(api => api.PinPOSTAsync(new CreatePinRequest
             {
                 StoreType = type,
                 Cids = cids.Select(c => c.Id).ToArray()
-            })));
-            log.Log($"CreatePin => {pinId}");
+            }));
+            var pinId = new PinId(response.PinId);
+            log.Log($"CreatePin of type {type} with {cids.Length} cids => {pinId}");
             return pinId;
         }
 
-        public void PatchPin(Cid[] addCids, Cid[] removeCids)
+        public void PatchPin(PinId pinId, Cid[] addCids, Cid[] removeCids)
         {
             On(api => api.PinPATCHAsync(new UpdatePinRequest
             {
+                PinId = pinId.Id,
                 AddCids = addCids.Select(c => c.Id).ToArray(),
                 RemoveCids = removeCids.Select(c => c.Id).ToArray()
             }));
@@ -156,9 +157,17 @@ namespace ContentTower.IntegrationTests
         {
             lock (_lock)
             {
-                var task = action(client);
-                task.Wait();
-                return task.Result;
+                try
+                {
+                    var task = action(client);
+                    task.Wait();
+                    return task.Result;
+                }
+                catch (Exception ex)
+                {
+                    log.Log("Exception: " + ex);
+                    throw;
+                }
             }
         }
 
@@ -166,8 +175,16 @@ namespace ContentTower.IntegrationTests
         {
             lock (_lock)
             {
-                var task = action(client);
-                task.Wait();
+                try
+                {
+                    var task = action(client);
+                    task.Wait();
+                }
+                catch (Exception ex)
+                {
+                    log.Log("Exception: " + ex);
+                    throw;
+                }
             }
         }
     }

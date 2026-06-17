@@ -152,17 +152,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/CreatePinResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/CreatePinResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/CreatePinResponse"
                 }
               }
             }
@@ -477,6 +477,14 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "CreatePinResponse": {
+        "type": "object",
+        "properties": {
+          "pinId": {
+            "type": "string"
           }
         }
       },

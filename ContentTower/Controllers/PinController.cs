@@ -18,11 +18,11 @@ namespace ContentTower.Controllers
 
         [HttpPost]
         [EndpointDescription("Creates a new pin and attaches it to the specified contents.")]
-        public string Create([FromBody] CreatePinRequest createPinRequest)
+        public CreatePinResponse Create([FromBody] CreatePinRequest createPinRequest)
         {
             var cids = Map(createPinRequest.Cids);
             var pinId = pinService.Create(createPinRequest.StoreType, cids);
-            return pinId.Id;
+            return new CreatePinResponse { PinId = pinId.Id };
         }
 
         [HttpPatch]
@@ -95,7 +95,7 @@ namespace ContentTower.Controllers
         private void DeleteInternal(PinId pinId, bool force)
         {
             var pin = pinService.Get(pinId);
-            if (pin.StoreType == StoreType.Permanent && !force) throw new BadHttpRequestException("Cannot delete permanent file.");
+            if (pin.StoreType == StoreType.Permanent && !force) throw new BadHttpRequestException("Cannot delete permanent pin.");
             pinService.Delete(pinId);
         }
 
@@ -120,6 +120,11 @@ namespace ContentTower.Controllers
     {
         public StoreType StoreType { get; set; }
         public string[] Cids { get; set; } = Array.Empty<string>();
+    }
+
+    public class CreatePinResponse
+    {
+        public string PinId { get; set; } = string.Empty;
     }
 
     public class UpdatePinRequest
