@@ -1,6 +1,5 @@
 using ContentTower.Controllers;
 using ContentTower.Services;
-using ContentTower.System;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -10,13 +9,13 @@ namespace ContentTower.Tests.Services;
 public class QuotaServiceTests
 {
     private readonly Mock<ILogger<QuotaService>> mockLogger;
-    private readonly Mock<IFileSystem> mockFileSystem;
+    private readonly Mock<IObjectStoreService> mockObjectStoreService;
     private readonly Mock<IOptions<StorageOptions>> mockOptions;
 
     public QuotaServiceTests()
     {
         mockLogger = new Mock<ILogger<QuotaService>>();
-        mockFileSystem = new Mock<IFileSystem>();
+        mockObjectStoreService = new Mock<IObjectStoreService>();
         mockOptions = new Mock<IOptions<StorageOptions>>();
     }
 
@@ -26,7 +25,7 @@ public class QuotaServiceTests
     {
         var optionsToUse = options ?? CreateValidStorageOptions();
         mockOptions.Setup(o => o.Value).Returns(optionsToUse);
-        return new QuotaService(mockLogger.Object, mockOptions.Object, mockFileSystem.Object);
+        return new QuotaService(mockLogger.Object, mockOptions.Object, mockObjectStoreService.Object);
     }
 
     private StorageOptions CreateValidStorageOptions(long quota = 1000000) // 1MB
@@ -51,9 +50,6 @@ public class QuotaServiceTests
             Name = name,
             ContentType = "text/plain",
             Length = length,
-            StoreType = StoreRequestType.Default,
-            UploadUtc = DateTime.UtcNow,
-            LastActivityUtc = DateTime.UtcNow
         };
     }
 
@@ -65,12 +61,10 @@ public class QuotaServiceTests
     public async Task Initialize_WithEmptyFileSystem_InitializesWithZeroUsedBytes()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
         await Assert.That(status.Used).IsEqualTo(0);
@@ -83,12 +77,10 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var expectedNominalLimit = (long)(quota * 0.8);
         var status = service.GetQuotaStatus();
@@ -104,18 +96,17 @@ public class QuotaServiceTests
         var file2 = CreateTestMetadata("file2.txt", length: 200000);
         var capturedCallback = default(Action<FileMetadata>);
 
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback =>
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) =>
             {
                 capturedCallback = callback;
                 callback(file1);
                 callback(file2);
-            })
-            .Returns(Task.CompletedTask);
+            });
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
         await Assert.That(status.Used).IsEqualTo(300000);
@@ -129,13 +120,12 @@ public class QuotaServiceTests
         var file = CreateTestMetadata("file.txt", length: 100000); // 10% of quota
         var nominalLimit = (long)(quota * 0.8);
 
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(file))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(file));
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
         await Assert.That(status.State).IsEqualTo(QuotaState.Nominal);
@@ -149,13 +139,12 @@ public class QuotaServiceTests
         var nominalLimit = (long)(quota * 0.8); // 800000
         var file = CreateTestMetadata("file.txt", length: 850000); // 85% of quota
 
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(file))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(file));
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
         await Assert.That(status.State).IsEqualTo(QuotaState.Pressure);
@@ -168,13 +157,12 @@ public class QuotaServiceTests
         var options = CreateValidStorageOptions(quota: quota);
         var file = CreateTestMetadata("file.txt", length: 1100000); // 110% of quota
 
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(file))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(file));
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
         await Assert.That(status.State).IsEqualTo(QuotaState.Full);
@@ -188,11 +176,9 @@ public class QuotaServiceTests
     public async Task GetQuotaStatus_ReturnsCurrentStatus()
     {
         var options = CreateValidStorageOptions(quota: 5000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
 
@@ -209,12 +195,11 @@ public class QuotaServiceTests
     public async Task IsFull_WhenStateIsNominal_ReturnsFalse()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         var isFull = service.IsFull();
 
@@ -226,12 +211,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 850000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 850000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         var isFull = service.IsFull();
 
@@ -243,12 +227,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 1100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 1100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         var isFull = service.IsFull();
 
@@ -263,11 +246,9 @@ public class QuotaServiceTests
     public async Task AddUsedBytes_IncreasesUsedBytes()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(50000);
 
@@ -279,11 +260,9 @@ public class QuotaServiceTests
     public async Task AddUsedBytes_MultipleInvocations_AccumulateBytes()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(10000);
         service.AddUsedBytes(20000);
@@ -298,11 +277,9 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(100000); // 10% of quota, below 80% nominal limit
 
@@ -316,11 +293,9 @@ public class QuotaServiceTests
         var quota = 1000000;
         var nominalLimit = (long)(quota * 0.8); // 800000
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(850000); // Exceeds 80% threshold
 
@@ -333,11 +308,9 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(1100000); // Exceeds quota
 
@@ -350,12 +323,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 850000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 850000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         // Verify initial state is Pressure
         await Assert.That(service.GetQuotaStatus().State).IsEqualTo(QuotaState.Pressure);
@@ -374,12 +346,11 @@ public class QuotaServiceTests
     public async Task RemoveUsedBytes_DecreasesUsedBytes()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.RemoveUsedBytes(30000);
 
@@ -391,12 +362,11 @@ public class QuotaServiceTests
     public async Task RemoveUsedBytes_MultipleInvocations_DecrementCorrectly()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.RemoveUsedBytes(20000);
         service.RemoveUsedBytes(30000);
@@ -409,12 +379,11 @@ public class QuotaServiceTests
     public async Task RemoveUsedBytes_PreventsNegativeValue()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 50000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 50000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.RemoveUsedBytes(100000); // Tries to remove more than exists
 
@@ -426,11 +395,9 @@ public class QuotaServiceTests
     public async Task RemoveUsedBytes_LogsWarningWhenGoingNegative()
     {
         var options = CreateValidStorageOptions(quota: 1000000);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.RemoveUsedBytes(50000); // Remove when used is 0
 
@@ -442,12 +409,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 850000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 850000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         // Verify initial state is Pressure
         await Assert.That(service.GetQuotaStatus().State).IsEqualTo(QuotaState.Pressure);
@@ -463,12 +429,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 1100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 1100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         // Verify initial state is Full
         await Assert.That(service.GetQuotaStatus().State).IsEqualTo(QuotaState.Full);
@@ -484,12 +449,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 1100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 1100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         // Verify initial state is Full
         await Assert.That(service.GetQuotaStatus().State).IsEqualTo(QuotaState.Full);
@@ -509,11 +473,9 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(850000); // Transition to Pressure
 
@@ -525,12 +487,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 850000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 850000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         // Reset mock to count only new log calls
         mockLogger.Reset();
@@ -545,11 +506,9 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         // Clear mock logs from Initialize
         mockLogger.Reset();
@@ -576,11 +535,9 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
         var initialState = service.GetQuotaStatus().State;
 
         service.AddUsedBytes(0);
@@ -595,12 +552,11 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 100000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 100000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
         var initialState = service.GetQuotaStatus().State;
         var initialUsed = service.GetQuotaStatus().Used;
 
@@ -616,11 +572,9 @@ public class QuotaServiceTests
     {
         var largeQuota = long.MaxValue / 2;
         var options = CreateValidStorageOptions(quota: largeQuota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         var largeBytes = 1000000000; // 1 GB
         service.AddUsedBytes(largeBytes);
@@ -633,12 +587,10 @@ public class QuotaServiceTests
     public async Task Initialize_WithQuotaOf1_Works()
     {
         var options = CreateValidStorageOptions(quota: 1);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
 
-        await service.Initialize();
+        service.Initialize();
 
         var status = service.GetQuotaStatus();
         await Assert.That(status.Quota).IsEqualTo(1);
@@ -654,11 +606,9 @@ public class QuotaServiceTests
         var quota = 1000000;
         var nominalLimit = (long)(quota * 0.8); // 800000
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(nominalLimit + 1); // One byte over nominal limit
 
@@ -672,11 +622,9 @@ public class QuotaServiceTests
         var quota = 1000000;
         var nominalLimit = (long)(quota * 0.8); // 800000
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(nominalLimit); // Exactly at nominal limit
 
@@ -689,11 +637,9 @@ public class QuotaServiceTests
     {
         var quota = 1000000;
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.AddUsedBytes(quota + 1); // One byte over quota
 
@@ -707,12 +653,11 @@ public class QuotaServiceTests
         var quota = 1000000;
         var nominalLimit = (long)(quota * 0.8); // 800000
         var options = CreateValidStorageOptions(quota: quota);
-        mockFileSystem.Setup(fs => fs.IterateObjects<FileMetadata>(It.IsAny<Action<FileMetadata>>()))
-            .Callback<Action<FileMetadata>>(callback => callback(CreateTestMetadata("file.txt", 850000)))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(fs => fs.IterateObjects("ct", It.IsAny<Action<FileMetadata>>()))
+            .Callback<string, Action<FileMetadata>>((s, callback) => callback(CreateTestMetadata("file.txt", 850000)));
 
         var service = CreateQuotaService(options);
-        await service.Initialize();
+        service.Initialize();
 
         service.RemoveUsedBytes(50001); // Takes to just below nominal limit
 

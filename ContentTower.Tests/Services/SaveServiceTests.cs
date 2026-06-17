@@ -1,6 +1,4 @@
-using ContentTower.Controllers;
 using ContentTower.Services;
-using ContentTower.System;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text;
@@ -12,20 +10,20 @@ namespace ContentTower.Tests.Services;
 public class SaveServiceTests
 {
     private readonly Mock<ILogger<SaveService>> mockLogger;
-    private readonly Mock<IFileSystem> mockFileSystem;
+    private readonly Mock<IObjectStoreService> mockObjectStoreService;
+    private readonly Mock<IDataStoreService> mockDataStoreService;
     private readonly Mock<IHashService> mockHashService;
     private readonly Mock<IPresenceService> mockPresenceService;
     private readonly Mock<IQuotaService> mockQuotaService;
-    private readonly Mock<ITime> mockTimeService;
 
     public SaveServiceTests()
     {
         mockLogger = new Mock<ILogger<SaveService>>();
-        mockFileSystem = new Mock<IFileSystem>();
+        mockObjectStoreService = new Mock<IObjectStoreService>();
+        mockDataStoreService = new Mock<IDataStoreService>();
         mockHashService = new Mock<IHashService>();
         mockPresenceService = new Mock<IPresenceService>();
         mockQuotaService = new Mock<IQuotaService>();
-        mockTimeService = new Mock<ITime>();
     }
 
     #region Helper Methods
@@ -34,37 +32,29 @@ public class SaveServiceTests
     {
         return new SaveService(
             mockLogger.Object,
-            mockFileSystem.Object,
+            mockObjectStoreService.Object,
+            mockDataStoreService.Object,
             mockHashService.Object,
             mockPresenceService.Object,
-            mockQuotaService.Object,
-            mockTimeService.Object
+            mockQuotaService.Object
         );
     }
 
-    private UploadRequest CreateValidUploadRequest(
-        StoreRequestType storeType = StoreRequestType.Default,
+    private SaveRequest CreateValidSaveRequest(
         string name = "test-file.txt",
         string contentType = "text/plain",
         byte[]? data = null)
     {
-        return new UploadRequest
-        {
-            StoreType = storeType,
-            Name = name,
-            ContentType = contentType,
-            Data = data ?? Encoding.UTF8.GetBytes("test content")
-        };
+        return new SaveRequest(
+            name,
+            contentType,
+            data ?? Encoding.UTF8.GetBytes("test content")
+        );
     }
 
     private Cid CreateTestCid(string hash = "ct+test+hash")
     {
         return new Cid(hash);
-    }
-
-    private DateTime GetFixedUtcNow()
-    {
-        return new DateTime(2026, 6, 5, 12, 0, 0, DateTimeKind.Utc);
     }
 
     #endregion
@@ -74,26 +64,20 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WithNewContent_SavesMetadataAndData()
     {
-        var request = CreateValidUploadRequest();
+        var request = CreateValidSaveRequest();
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
         mockHashService.Verify(hs => hs.GetHash(request.Data), Times.Once);
-        mockFileSystem.Verify(fs => fs.WriteObject(testCid, It.IsAny<FileMetadata>()), Times.Once);
-        mockFileSystem.Verify(fs => fs.WriteData(testCid, request.Data), Times.Once);
+        mockObjectStoreService.Verify(os => os.CreateOrUpdateObject<FileMetadata>(testCid, It.IsAny<Action<FileMetadata>>()), Times.Once);
+        mockDataStoreService.Verify(ds => ds.WriteData(testCid, request.Data), Times.Once);
         mockPresenceService.Verify(ps => ps.SetPresence(testCid), Times.Once);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(request.Data.Length), Times.Once);
     }
@@ -101,39 +85,32 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WithNewContent_CreatesMetadataWithCorrectProperties()
     {
-        var request = CreateValidUploadRequest(
-            storeType: StoreRequestType.PermanentFile,
+        var request = CreateValidSaveRequest(
             name: "my-file.pdf",
             contentType: "application/pdf"
         );
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
+        FileMetadata? capturedMetadata = null;
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService
+            .Setup(os => os.CreateOrUpdateObject<FileMetadata>(It.IsAny<IId>(), It.IsAny<Action<FileMetadata>>()))
+            .Callback<IId, Action<FileMetadata>>((id, action) =>
+            {
+                var metadata = new FileMetadata();
+                action(metadata);
+                capturedMetadata = metadata;
+            });
 
         var service = CreateSaveService();
-        FileMetadata? capturedMetadata = null;
-
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Callback<Cid, FileMetadata>((cid, metadata) => capturedMetadata = metadata)
-            .Returns(Task.CompletedTask);
-
-        await service.Handle(request);
+        service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.Cid.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(capturedMetadata!.Cid.Id).IsEqualTo(testCid.Id);
         await Assert.That(capturedMetadata.Name).IsEqualTo("my-file.pdf");
         await Assert.That(capturedMetadata.ContentType).IsEqualTo("application/pdf");
         await Assert.That(capturedMetadata.Length).IsEqualTo(request.Data.Length);
-        await Assert.That(capturedMetadata.StoreType).IsEqualTo(StoreRequestType.PermanentFile);
-        await Assert.That(capturedMetadata.UploadUtc).IsEqualTo(fixedNow);
-        await Assert.That(capturedMetadata.LastActivityUtc).IsEqualTo(fixedNow);
     }
 
     #endregion
@@ -143,7 +120,7 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WithExistingContent_ReturnsExistingCid()
     {
-        var request = CreateValidUploadRequest();
+        var request = CreateValidSaveRequest();
         var testCid = CreateTestCid();
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
@@ -151,12 +128,12 @@ public class SaveServiceTests
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
-        mockFileSystem.Verify(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()), Times.Never);
-        mockFileSystem.Verify(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()), Times.Never);
-        mockPresenceService.Verify(ps => ps.SetPresence(It.IsAny<Cid>()), Times.Never);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
+        mockObjectStoreService.Verify(os => os.CreateOrUpdateObject<FileMetadata>(It.IsAny<IId>(), It.IsAny<Action<FileMetadata>>()), Times.Never);
+        mockDataStoreService.Verify(ds => ds.WriteData(It.IsAny<IId>(), It.IsAny<byte[]>()), Times.Never);
+        mockPresenceService.Verify(ps => ps.SetPresence(It.IsAny<IId>()), Times.Never);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(It.IsAny<long>()), Times.Never);
     }
 
@@ -167,27 +144,21 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WhenWriteDataThrows_DeletesMetadataObject()
     {
-        var request = CreateValidUploadRequest();
+        var request = CreateValidSaveRequest();
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
         var testException = new IOException("Disk write failed");
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .ThrowsAsync(testException);
-        mockFileSystem.Setup(fs => fs.DeleteObject(testCid))
-            .Returns(Task.CompletedTask);
+        mockDataStoreService.Setup(ds => ds.WriteData(It.IsAny<IId>(), It.IsAny<byte[]>()))
+            .Throws(testException);
 
         var service = CreateSaveService();
 
         Exception? thrownException = null;
         try
         {
-            await service.Handle(request);
+            service.Save(request);
         }
         catch (Exception ex)
         {
@@ -196,65 +167,53 @@ public class SaveServiceTests
 
         await Assert.That(thrownException).IsNotNull();
         await Assert.That(thrownException).IsOfType(typeof(IOException));
-        mockFileSystem.Verify(fs => fs.DeleteObject(testCid), Times.Once);
+        mockObjectStoreService.Verify(os => os.DeleteObject(testCid), Times.Once);
     }
 
     [Test]
     public async Task Handle_WhenWriteDataThrows_DoesNotSetPresenceOrQuota()
     {
-        var request = CreateValidUploadRequest();
+        var request = CreateValidSaveRequest();
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .ThrowsAsync(new IOException("Write failed"));
-        mockFileSystem.Setup(fs => fs.DeleteObject(testCid))
-            .Returns(Task.CompletedTask);
+        mockDataStoreService.Setup(ds => ds.WriteData(It.IsAny<IId>(), It.IsAny<byte[]>()))
+            .Throws(new IOException("Write failed"));
 
         var service = CreateSaveService();
 
         try
         {
-            await service.Handle(request);
+            service.Save(request);
         }
         catch
         {
             // Expected
         }
 
-        mockPresenceService.Verify(ps => ps.SetPresence(It.IsAny<Cid>()), Times.Never);
+        mockPresenceService.Verify(ps => ps.SetPresence(It.IsAny<IId>()), Times.Never);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(It.IsAny<long>()), Times.Never);
     }
 
     [Test]
     public async Task Handle_WhenWriteDataThrows_RethrowsException()
     {
-        var request = CreateValidUploadRequest();
+        var request = CreateValidSaveRequest();
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
         var testException = new UnauthorizedAccessException("Permission denied");
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .ThrowsAsync(testException);
-        mockFileSystem.Setup(fs => fs.DeleteObject(testCid))
-            .Returns(Task.CompletedTask);
+        mockDataStoreService.Setup(ds => ds.WriteData(It.IsAny<IId>(), It.IsAny<byte[]>()))
+            .Throws(testException);
 
         var service = CreateSaveService();
 
         Exception? thrownException = null;
         try
         {
-            await service.Handle(request);
+            service.Save(request);
         }
         catch (Exception ex)
         {
@@ -267,81 +226,21 @@ public class SaveServiceTests
 
     #endregion
 
-    #region Tests - Store Type Variations
-
-    [Test]
-    public async Task Handle_WithTemporaryStoreType_SavesWithCorrectStoreType()
-    {
-        var request = CreateValidUploadRequest(storeType: StoreRequestType.TemporaryFile);
-        var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
-        FileMetadata? capturedMetadata = null;
-
-        mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
-        mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Callback<Cid, FileMetadata>((cid, metadata) => capturedMetadata = metadata)
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
-
-        var service = CreateSaveService();
-
-        await service.Handle(request);
-
-        await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreRequestType.TemporaryFile);
-    }
-
-    [Test]
-    public async Task Handle_WithDefaultStoreType_SavesWithCorrectStoreType()
-    {
-        var request = CreateValidUploadRequest(storeType: StoreRequestType.Default);
-        var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
-        FileMetadata? capturedMetadata = null;
-
-        mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
-        mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Callback<Cid, FileMetadata>((cid, metadata) => capturedMetadata = metadata)
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
-
-        var service = CreateSaveService();
-
-        await service.Handle(request);
-
-        await Assert.That(capturedMetadata).IsNotNull();
-        await Assert.That(capturedMetadata!.StoreType).IsEqualTo(StoreRequestType.Default);
-    }
-
-    #endregion
-
     #region Tests - Data Size Variations
 
     [Test]
     public async Task Handle_WithLargeData_AddsCorrectBytesToQuota()
     {
         var largeData = new byte[10 * 1024 * 1024]; // 10 MB
-        var request = CreateValidUploadRequest(data: largeData);
+        var request = CreateValidSaveRequest(data: largeData);
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        service.Save(request);
 
         mockQuotaService.Verify(qs => qs.AddUsedBytes(10 * 1024 * 1024), Times.Once);
     }
@@ -350,23 +249,17 @@ public class SaveServiceTests
     public async Task Handle_WithSmallData_SavesCorrectly()
     {
         var smallData = new byte[1]; // 1 byte
-        var request = CreateValidUploadRequest(data: smallData);
+        var request = CreateValidSaveRequest(data: smallData);
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(1), Times.Once);
     }
 
@@ -377,30 +270,24 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_CallsHashServiceFirst()
     {
-        var request = CreateValidUploadRequest();
+        var request = CreateValidSaveRequest();
         var testCid = CreateTestCid();
         var callOrder = new List<string>();
 
-        var fixedNow = GetFixedUtcNow();
         mockHashService.Setup(hs => hs.GetHash(request.Data))
             .Callback(() => callOrder.Add("GetHash"))
             .Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid))
             .Callback(() => callOrder.Add("IsPresent"))
             .Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow())
-            .Callback(() => callOrder.Add("UtcNow"))
-            .Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Callback(() => callOrder.Add("WriteObject"))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Callback(() => callOrder.Add("WriteData"))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService.Setup(os => os.CreateOrUpdateObject<FileMetadata>(It.IsAny<IId>(), It.IsAny<Action<FileMetadata>>()))
+            .Callback(() => callOrder.Add("CreateOrUpdateObject"));
+        mockDataStoreService.Setup(ds => ds.WriteData(It.IsAny<IId>(), It.IsAny<byte[]>()))
+            .Callback(() => callOrder.Add("WriteData"));
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        service.Save(request);
 
         await Assert.That(callOrder[0]).IsEqualTo("GetHash");
         await Assert.That(callOrder[1]).IsEqualTo("IsPresent");
@@ -413,24 +300,18 @@ public class SaveServiceTests
     [Test]
     public async Task Handle_WithEmptyData_StillSavesCorrectly()
     {
-        var request = CreateValidUploadRequest(data: Array.Empty<byte>());
+        var request = CreateValidSaveRequest(data: Array.Empty<byte>());
         var testCid = CreateTestCid("ct+empty");
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateSaveService();
 
-        var result = await service.Handle(request);
+        var result = service.Save(request);
 
-        await Assert.That(result.Hash).IsEqualTo(testCid.Hash);
-        mockFileSystem.Verify(fs => fs.WriteData(testCid, Array.Empty<byte>()), Times.Once);
+        await Assert.That(result.Id).IsEqualTo(testCid.Id);
+        mockDataStoreService.Verify(ds => ds.WriteData(testCid, Array.Empty<byte>()), Times.Once);
         mockQuotaService.Verify(qs => qs.AddUsedBytes(0), Times.Once);
     }
 
@@ -442,23 +323,24 @@ public class SaveServiceTests
     public async Task Handle_WithCustomFileName_SavesCustomName()
     {
         var customName = "my-document-2026-06-05.docx";
-        var request = CreateValidUploadRequest(name: customName);
+        var request = CreateValidSaveRequest(name: customName);
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
         FileMetadata? capturedMetadata = null;
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Callback<Cid, FileMetadata>((cid, metadata) => capturedMetadata = metadata)
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService
+            .Setup(os => os.CreateOrUpdateObject<FileMetadata>(It.IsAny<IId>(), It.IsAny<Action<FileMetadata>>()))
+            .Callback<IId, Action<FileMetadata>>((id, action) =>
+            {
+                var metadata = new FileMetadata();
+                action(metadata);
+                capturedMetadata = metadata;
+            });
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
         await Assert.That(capturedMetadata!.Name).IsEqualTo(customName);
@@ -468,23 +350,24 @@ public class SaveServiceTests
     public async Task Handle_WithCustomContentType_SavesCustomContentType()
     {
         var customContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        var request = CreateValidUploadRequest(contentType: customContentType);
+        var request = CreateValidSaveRequest(contentType: customContentType);
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
         FileMetadata? capturedMetadata = null;
 
         mockHashService.Setup(hs => hs.GetHash(request.Data)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Callback<Cid, FileMetadata>((cid, metadata) => capturedMetadata = metadata)
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
+        mockObjectStoreService
+            .Setup(os => os.CreateOrUpdateObject<FileMetadata>(It.IsAny<IId>(), It.IsAny<Action<FileMetadata>>()))
+            .Callback<IId, Action<FileMetadata>>((id, action) =>
+            {
+                var metadata = new FileMetadata();
+                action(metadata);
+                capturedMetadata = metadata;
+            });
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        service.Save(request);
 
         await Assert.That(capturedMetadata).IsNotNull();
         await Assert.That(capturedMetadata!.ContentType).IsEqualTo(customContentType);
@@ -498,21 +381,15 @@ public class SaveServiceTests
     public async Task Handle_PassesCorrectDataToHashService()
     {
         var testData = Encoding.UTF8.GetBytes("specific test data");
-        var request = CreateValidUploadRequest(data: testData);
+        var request = CreateValidSaveRequest(data: testData);
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(testData)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(It.IsAny<Cid>(), It.IsAny<byte[]>()))
-            .Returns(Task.CompletedTask);
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        service.Save(request);
 
         mockHashService.Verify(hs => hs.GetHash(testData), Times.Once);
     }
@@ -521,23 +398,17 @@ public class SaveServiceTests
     public async Task Handle_PassesCorrectDataToWriteData()
     {
         var testData = Encoding.UTF8.GetBytes("write data test");
-        var request = CreateValidUploadRequest(data: testData);
+        var request = CreateValidSaveRequest(data: testData);
         var testCid = CreateTestCid();
-        var fixedNow = GetFixedUtcNow();
 
         mockHashService.Setup(hs => hs.GetHash(testData)).Returns(testCid);
         mockPresenceService.Setup(ps => ps.IsPresent(testCid)).Returns(false);
-        mockTimeService.Setup(ts => ts.UtcNow()).Returns(fixedNow);
-        mockFileSystem.Setup(fs => fs.WriteObject(It.IsAny<Cid>(), It.IsAny<FileMetadata>()))
-            .Returns(Task.CompletedTask);
-        mockFileSystem.Setup(fs => fs.WriteData(testCid, testData))
-            .Returns(Task.CompletedTask);
 
         var service = CreateSaveService();
 
-        await service.Handle(request);
+        service.Save(request);
 
-        mockFileSystem.Verify(fs => fs.WriteData(testCid, testData), Times.Once);
+        mockDataStoreService.Verify(ds => ds.WriteData(testCid, testData), Times.Once);
     }
 
     #endregion

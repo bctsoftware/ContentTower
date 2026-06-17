@@ -6,59 +6,16 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5000/"
+      "url": "http://localhost:5135/"
     }
   ],
   "paths": {
-    "/Delete/{cid}": {
-      "delete": {
-        "tags": [
-          "Delete"
-        ],
-        "parameters": [
-          {
-            "name": "cid",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/Delete/force/{cid}": {
-      "delete": {
-        "tags": [
-          "Delete"
-        ],
-        "parameters": [
-          {
-            "name": "cid",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/Download/download/{cid}": {
+    "/Content/{cid}/download": {
       "get": {
         "tags": [
-          "Download"
+          "Content"
         ],
+        "description": "Downloads content as a stream.",
         "parameters": [
           {
             "name": "cid",
@@ -83,11 +40,12 @@
         }
       }
     },
-    "/Download/metadata/{cid}": {
+    "/Content/{cid}/metadata": {
       "get": {
         "tags": [
-          "Download"
+          "Content"
         ],
+        "description": "Retrieves metadata for content.",
         "parameters": [
           {
             "name": "cid",
@@ -104,17 +62,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileMetadata"
+                  "$ref": "#/components/schemas/ContentView"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileMetadata"
+                  "$ref": "#/components/schemas/ContentView"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileMetadata"
+                  "$ref": "#/components/schemas/ContentView"
                 }
               }
             }
@@ -122,11 +80,12 @@
         }
       }
     },
-    "/Download/check/{cid}": {
+    "/Content/{cid}/check": {
       "get": {
         "tags": [
-          "Download"
+          "Content"
         ],
+        "description": "Checks whether the content exists in this service.",
         "parameters": [
           {
             "name": "cid",
@@ -157,6 +116,211 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/Pin": {
+      "post": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Creates a new pin and attaches it to the specified contents.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePinRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePinRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePinResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePinResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePinResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Attached content to or detaches content from the specified pin.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePinRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePinRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Pin/{pinId}": {
+      "get": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Retrieves pin details.",
+        "parameters": [
+          {
+            "name": "pinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinView"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinView"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Deletes a pin immediately. Not allowed for pins with StoreType 'Permanent'.",
+        "parameters": [
+          {
+            "name": "pinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/Pin/{pinId}/check": {
+      "get": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Checks whether the pin exists in this service.",
+        "parameters": [
+          {
+            "name": "pinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Pin/{pinId}/force": {
+      "delete": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Deletes a pin immediately. Explicit override for pins with StoreType 'Permanent'.",
+        "parameters": [
+          {
+            "name": "pinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -166,6 +330,7 @@
         "tags": [
           "Quota"
         ],
+        "description": "Retrieves current quota status information.",
         "responses": {
           "200": {
             "description": "OK",
@@ -195,6 +360,7 @@
         "tags": [
           "Quota"
         ],
+        "description": "Retrieves ContentTower configuration information.",
         "responses": {
           "200": {
             "description": "OK",
@@ -224,6 +390,7 @@
         "tags": [
           "Upload"
         ],
+        "description": "Stores content in ContentTower. Creates new pins for the content if requested. Attaches existing pins to the content if requested.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -271,22 +438,17 @@
   },
   "components": {
     "schemas": {
-      "Cid": {
-        "required": [
-          "hash"
-        ],
-        "type": "object",
-        "properties": {
-          "hash": {
-            "type": "string"
-          }
-        }
-      },
-      "FileMetadata": {
+      "ContentView": {
         "type": "object",
         "properties": {
           "cid": {
-            "$ref": "#/components/schemas/Cid"
+            "type": "string"
+          },
+          "pinIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "name": {
             "type": "string"
@@ -301,17 +463,28 @@
               "string"
             ],
             "format": "int64"
-          },
+          }
+        }
+      },
+      "CreatePinRequest": {
+        "type": "object",
+        "properties": {
           "storeType": {
-            "$ref": "#/components/schemas/StoreRequestType"
+            "$ref": "#/components/schemas/StoreType"
           },
-          "uploadUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastActivityUtc": {
-            "type": "string",
-            "format": "date-time"
+          "cids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreatePinResponse": {
+        "type": "object",
+        "properties": {
+          "pinId": {
+            "type": "string"
           }
         }
       },
@@ -360,6 +533,31 @@
           }
         }
       },
+      "PinView": {
+        "type": "object",
+        "properties": {
+          "pinId": {
+            "type": "string"
+          },
+          "storeType": {
+            "$ref": "#/components/schemas/StoreType"
+          },
+          "createUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastActivityUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "QuotaResponse": {
         "type": "object",
         "properties": {
@@ -385,25 +583,46 @@
         }
       },
       "QuotaState": {
-        "type": "integer"
+        "enum": [
+          "Nominal",
+          "Pressure",
+          "Full"
+        ]
       },
-      "StoreRequestType": {
+      "StoreType": {
         "enum": [
           "Default",
-          "TemporaryFile",
-          "PermanentFile"
+          "Temporary",
+          "Permanent"
         ]
       },
       "Stream": {
         "type": "string",
         "format": "binary"
       },
+      "UpdatePinRequest": {
+        "type": "object",
+        "properties": {
+          "pinId": {
+            "type": "string"
+          },
+          "addCids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removeCids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "UploadRequest": {
         "type": "object",
         "properties": {
-          "storeType": {
-            "$ref": "#/components/schemas/StoreRequestType"
-          },
           "name": {
             "type": "string"
           },
@@ -413,14 +632,32 @@
           "data": {
             "type": "string",
             "format": "byte"
+          },
+          "attachExistingPinIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createNewPins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreType"
+            }
           }
         }
       },
       "UploadResponse": {
         "type": "object",
         "properties": {
-          "contentId": {
+          "cid": {
             "type": "string"
+          },
+          "newPinIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
@@ -428,10 +665,10 @@
   },
   "tags": [
     {
-      "name": "Delete"
+      "name": "Content"
     },
     {
-      "name": "Download"
+      "name": "Pin"
     },
     {
       "name": "Quota"

@@ -2,7 +2,7 @@
 
 namespace ContentTower.IntegrationTests.Tests
 {
-    public class DeleteForcePermanentFilesTests : BaseTest
+    public class DeleteForcePermanentPinsTests : BaseTest
     {
         public override void Run()
         {
@@ -12,6 +12,7 @@ namespace ContentTower.IntegrationTests.Tests
             Check(() => Ct.Check(pinId) == true);
 
             var normalDeleteFailed = false;
+            Log("Deleting a permanent pin is not allowed.");
             try
             {
                 Ct.Delete(pinId);
@@ -21,17 +22,21 @@ namespace ContentTower.IntegrationTests.Tests
                 normalDeleteFailed = true;
             }
 
+            Log("It survives the delete attempt.");
             Check(() => normalDeleteFailed == true);
             Check(() => Ct.Check(cid) == true);
             Check(() => Ct.Check(pinId) == true);
 
+            Log("Use force-delete.");
             Ct.Delete(pinId, force: true);
 
+            Log("Now the pin is deleted.");
             Check(() => Ct.Check(cid) == true);
             Check(() => Ct.Check(pinId) == false);
 
             SleepCleanupInterval();
 
+            Log("Then the content is cleaned up.");
             Check(() => Ct.Check(cid) == false);
             Check(() => Ct.Check(pinId) == false);
         }

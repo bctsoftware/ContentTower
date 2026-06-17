@@ -2,7 +2,7 @@
 
 namespace ContentTower.IntegrationTests.Tests
 {
-    public class ActivityExtendsTempFileTest : BaseTest
+    public class ActivityExtendsTempPinTest : BaseTest
     {
         public override void Run()
         {
@@ -11,7 +11,7 @@ namespace ContentTower.IntegrationTests.Tests
             var span = TimeSpan.FromSeconds(Options.StoreDurationTemporaryNominalSeconds);
             var half = span / 2.0;
 
-            // Each touch resets temp storage.
+            Log("Each touch resets temp storage remaining time.");
             Sleep(half);
             Check(() => Ct.Download(cid).Length > 0);
 
@@ -20,14 +20,16 @@ namespace ContentTower.IntegrationTests.Tests
 
             Sleep(half);
             Check(() => Ct.Download(cid).Length > 0);
+
 
             Check(() => Ct.Check(pinId) == true);
             Check(() => Ct.Check(cid) == true);
 
+            Log("Now let it expire.");
             Sleep(span);
             SleepCleanupInterval();
 
-            // Then it cleans up.
+            Log("Then it cleans up.");
             Check(() => Ct.Check(pinId) == false);
             Check(() => Ct.Check(cid) == false);
         }

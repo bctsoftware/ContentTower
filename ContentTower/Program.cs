@@ -1,4 +1,5 @@
 using ContentTower.Services;
+using ContentTower.Services.CleanupWorkers;
 using ContentTower.System;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -12,7 +13,7 @@ namespace ContentTower
             var app = BuildApp(args);
 
             InitializeOptions(app);
-            await InitializeServices(app);
+            InitializeServices(app);
 
             if (app.Environment.IsDevelopment())
             {
@@ -37,11 +38,17 @@ namespace ContentTower
             builder.Services.AddSingleton<ITime, Time>();
             builder.Services.AddSingleton<IFileSystem, FileSystem>();
             // Services:
-            builder.Services.AddSingleton<IDeleteService, DeleteService>();
-            builder.Services.AddSingleton<ICleanupWorker, CleanupWorker>();
+            builder.Services.AddSingleton<IContentCleanupWorker, ContentCleanupWorker>();
+            builder.Services.AddSingleton<IDatafileCleanupWorker, DatafileCleanupWorker>();
+            builder.Services.AddSingleton<IPinCleanupWorker, PinCleanupWorker>();
+            builder.Services.AddSingleton<ITimespanSelector, TimespanSelector>();
             builder.Services.AddSingleton<ICleanupService, CleanupService>();
+            builder.Services.AddSingleton<IDataStoreService, DataStoreService>();
+            builder.Services.AddSingleton<IDeleteService, DeleteService>();
             builder.Services.AddSingleton<IHashService, HashService>();
             builder.Services.AddSingleton<ILoadService, LoadService>();
+            builder.Services.AddSingleton<IObjectStoreService, ObjectStoreService>();
+            builder.Services.AddSingleton<IPinService, PinService>();
             builder.Services.AddSingleton<IPresenceService, PresenceService>();
             builder.Services.AddSingleton<IQuotaService, QuotaService>();
             builder.Services.AddSingleton<ISaveService, SaveService>();
@@ -54,9 +61,9 @@ namespace ContentTower
             return builder.Build();
         }
 
-        private static async Task InitializeServices(WebApplication app)
+        private static void InitializeServices(WebApplication app)
         {
-            await Get<IQuotaService>(app).Initialize();
+            Get<IQuotaService>(app).Initialize();
             Get<ICleanupService>(app).Start();
         }
 

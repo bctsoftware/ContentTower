@@ -1,30 +1,30 @@
-﻿using ContentTower.System;
-
-namespace ContentTower.Services
+﻿namespace ContentTower.Services
 {
     public interface ILoadService
     {
-        Task<FileMetadata> ReadMetadata(Cid cid);
-        Task<Stream> ReadData(Cid cid);
+        FileMetadata ReadMetadata(Cid cid);
+        Stream ReadData(Cid cid);
     }
 
     public class LoadService : ILoadService
     {
-        private readonly IFileSystem fs;
+        private readonly IObjectStoreService objectStoreService;
+        private readonly IDataStoreService dataStoreService;
 
-        public LoadService(IFileSystem fs)
+        public LoadService(IObjectStoreService objectStoreService, IDataStoreService dataStoreService)
         {
-            this.fs = fs;
+            this.objectStoreService = objectStoreService;
+            this.dataStoreService = dataStoreService;
         }
 
-        public async Task<FileMetadata> ReadMetadata(Cid cid)
+        public FileMetadata ReadMetadata(Cid cid)
         {
-            return await fs.ReadObject<FileMetadata>(cid);
+            return objectStoreService.ReadObject<FileMetadata>(cid);
         }
 
-        public async Task<Stream> ReadData(Cid cid)
+        public Stream ReadData(Cid cid)
         {
-            return await fs.ReadData(cid);
+            return dataStoreService.ReadData(cid);
         }
     }
 }

@@ -6,14 +6,16 @@ namespace ContentTower.IntegrationTests.Tests
     {
         public override void Run()
         {
-            var (name, type, cid) = UploadRandom(StoreRequestType.TemporaryFile);
+            var (name, type, cid, pinId) = UploadRandom(StoreType.Temporary);
+            Log("We have a content with a temporary pin.");
 
             var span = TimeSpan.FromSeconds(Options.StoreDurationTemporaryNominalSeconds);
 
             Sleep(span);
             SleepCleanupInterval();
 
-            // Untouching temp store cleans up quickly.
+            Log("Untouching temporary pins are cleaned up quickly.");
+            Check(() => Ct.Check(pinId) == false);
             Check(() => Ct.Check(cid) == false);
         }
     }
