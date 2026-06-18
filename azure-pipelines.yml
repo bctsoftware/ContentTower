@@ -117,4 +117,4 @@ stages:
               XmlTransformation: true
               XmlVariableSubstitution: true
               JSONFiles: |
-                **/appsettings.json
+                **/appsettings.Development.json
