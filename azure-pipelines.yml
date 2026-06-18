@@ -1,3 +1,14 @@
+trigger: none
+
+variables:
+- name: buildConfiguration
+  value: 'Release'
+- name: projectPath
+  value: 'ContentTower/ContentTower.csproj'
+- name: artifactName
+  value: 'drop'
+- name: publishFolder
+  value: '$(Build.ArtifactStagingDirectory)/publish'
 
 stages:
 - stage: Build
