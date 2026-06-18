@@ -34,6 +34,9 @@ namespace ContentTower
         private static WebApplication BuildApp(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            // Logging
+            builder.Logging.AddConsole();
+            builder.Logging.AddSeq(builder.Configuration.GetSection("Seq"));
             // System abstraction modules:
             builder.Services.AddSingleton<ITime, Time>();
             builder.Services.AddSingleton<IFileSystem, FileSystem>();
