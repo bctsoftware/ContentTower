@@ -1,0 +1,109 @@
+
+stages:
+- stage: Build
+  displayName: 'Build and publish'
+  jobs:
+  - job: Build
+    displayName: 'Build Web API'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+    - checkout: self
+
+    - task: UseDotNet@2
+      displayName: 'Install .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '10.x'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore packages'
+      inputs:
+        command: 'restore'
+        projects: '$(projectPath)'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build solution'
+      inputs:
+        command: 'build'
+        projects: '$(projectPath)'
+        arguments: '--configuration $(buildConfiguration) --no-restore'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Run tests'
+      inputs:
+        command: 'test'
+        projects: '**/*Tests/*.csproj'
+        arguments: '--configuration $(buildConfiguration) --no-build'
+      continueOnError: false
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Web API'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: '$(projectPath)'
+        arguments: '--configuration $(buildConfiguration) --output $(publishFolder) --no-build'
+        zipAfterPublish: true
+        modifyOutputPath: false
+
+    - publish: '$(publishFolder)'
+      displayName: 'Publish pipeline artifact'
+      artifact: '$(artifactName)'
+
+- stage: Deploy_Dev
+  displayName: 'Deploy to IIS Dev'
+  dependsOn: Build
+  condition: succeeded()
+
+  variables:
+  - group: Verix.ContentTower_DEV
+  - name: Release.EnvironmentName
+    value: 'Development'
+
+  jobs:
+  - deployment: DeployToIisDev
+    displayName: 'Deploy Web API to IIS Dev'
+    environment:
+      name: 'Development'
+      resourceType: VirtualMachine
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - powershell: |
+              Remove-Item "$(Pipeline.Workspace)\$(artifactName)" -Recurse -Force -ErrorAction SilentlyContinue
+            displayName: 'Clean downloaded artifact folder'
+
+          - download: current
+            artifact: '$(artifactName)'
+
+          - task: IISWebAppManagementOnMachineGroup@0
+            displayName: 'Ensuring IIS Website'
+            inputs:
+              IISDeploymentType: 'IISWebsite'
+              ActionIISWebsite: 'CreateOrUpdateWebsite'
+              WebsiteName: '$(iisSiteName)'
+              WebsitePhysicalPath: '$(iisPhysicalPath)'
+              WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+              AddBinding: true
+              Bindings: |
+                $(iisBindings)
+              CreateOrUpdateAppPoolForWebsite: true
+              AppPoolNameForWebsite: '$(iisAppPoolName)'
+              DotNetVersionForWebsite: 'No Managed Code'
+              PipeLineModeForWebsite: 'Integrated'
+              AppPoolIdentityForWebsite: 'ApplicationPoolIdentity'
+
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy files to IIS'
+            inputs:
+              WebSiteName: '$(iisSiteName)'
+              Package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'
+              TakeAppOfflineFlag: true
+              XmlTransformation: true
+              XmlVariableSubstitution: true
+              JSONFiles: |
+                **/appsettings.json
