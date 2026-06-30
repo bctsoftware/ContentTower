@@ -118,3 +118,115 @@ stages:
               XmlVariableSubstitution: true
               JSONFiles: |
                 **/appsettings.Development.json
+
+- stage: Deploy_Acc
+  displayName: 'Deploy to IIS Acc'
+  dependsOn: Deploy_Dev
+  condition: succeeded()
+
+  variables:
+  - group: Verix.ContentTower_ACC
+  - name: Release.EnvironmentName
+    value: 'Acceptance'
+
+  jobs:
+  - deployment: DeployToIisAcc
+    displayName: 'Deploy Web API to IIS Acc'
+    environment:
+      name: 'Acceptance'
+      resourceType: VirtualMachine
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - powershell: |
+              Remove-Item "$(Pipeline.Workspace)\$(artifactName)" -Recurse -Force -ErrorAction SilentlyContinue
+            displayName: 'Clean downloaded artifact folder'
+
+          - download: current
+            artifact: '$(artifactName)'
+
+          - task: IISWebAppManagementOnMachineGroup@0
+            displayName: 'Ensuring IIS Website'
+            inputs:
+              IISDeploymentType: 'IISWebsite'
+              ActionIISWebsite: 'CreateOrUpdateWebsite'
+              WebsiteName: '$(iisSiteName)'
+              WebsitePhysicalPath: '$(iisPhysicalPath)'
+              WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+              AddBinding: true
+              Bindings: |
+                $(iisBindings)
+              CreateOrUpdateAppPoolForWebsite: true
+              AppPoolNameForWebsite: '$(iisAppPoolName)'
+              DotNetVersionForWebsite: 'No Managed Code'
+              PipeLineModeForWebsite: 'Integrated'
+              AppPoolIdentityForWebsite: 'ApplicationPoolIdentity'
+
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy files to IIS'
+            inputs:
+              WebSiteName: '$(iisSiteName)'
+              Package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'
+              TakeAppOfflineFlag: true
+              XmlTransformation: true
+              XmlVariableSubstitution: true
+              JSONFiles: |
+                **/appsettings.json
+
+- stage: Deploy_Prd
+  displayName: 'Deploy to IIS Prd'
+  dependsOn: Deploy_Acc
+  condition: succeeded()
+
+  variables:
+  - group: Verix.ContentTower_PRD
+  - name: Release.EnvironmentName
+    value: 'Production'
+
+  jobs:
+  - deployment: DeployToIisPrd
+    displayName: 'Deploy Web API to IIS Prd'
+    environment:
+      name: 'Production'
+      resourceType: VirtualMachine
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - powershell: |
+              Remove-Item "$(Pipeline.Workspace)\$(artifactName)" -Recurse -Force -ErrorAction SilentlyContinue
+            displayName: 'Clean downloaded artifact folder'
+
+          - download: current
+            artifact: '$(artifactName)'
+
+          - task: IISWebAppManagementOnMachineGroup@0
+            displayName: 'Ensuring IIS Website'
+            inputs:
+              IISDeploymentType: 'IISWebsite'
+              ActionIISWebsite: 'CreateOrUpdateWebsite'
+              WebsiteName: '$(iisSiteName)'
+              WebsitePhysicalPath: '$(iisPhysicalPath)'
+              WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+              AddBinding: true
+              Bindings: |
+                $(iisBindings)
+              CreateOrUpdateAppPoolForWebsite: true
+              AppPoolNameForWebsite: '$(iisAppPoolName)'
+              DotNetVersionForWebsite: 'No Managed Code'
+              PipeLineModeForWebsite: 'Integrated'
+              AppPoolIdentityForWebsite: 'ApplicationPoolIdentity'
+
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy files to IIS'
+            inputs:
+              WebSiteName: '$(iisSiteName)'
+              Package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'
+              TakeAppOfflineFlag: true
+              XmlTransformation: true
+              XmlVariableSubstitution: true
+              JSONFiles: |
+                **/appsettings.json
