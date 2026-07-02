@@ -59,6 +59,13 @@ stages:
         zipAfterPublish: true
         modifyOutputPath: false
 
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'Verix.AzureCR.io'
+        repository: 'Verix.ContentTower'
+        command: 'buildAndPush'
+        Dockerfile: '**/ContentTower/Dockerfile'
+
     - publish: '$(publishFolder)'
       displayName: 'Publish pipeline artifact'
       artifact: '$(artifactName)'
