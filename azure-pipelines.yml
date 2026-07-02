@@ -59,12 +59,32 @@ stages:
         zipAfterPublish: true
         modifyOutputPath: false
 
+    - powershell: |
+        $branchName = "$(Build.SourceBranchName)"
+        $shortSha = "$(Build.SourceVersionShort)"
+        
+        Write-Host "Branch: $branchName"
+        Write-Host "Short SHA: $shortSha"
+        
+        if ($branchName -eq "master") {
+          $tags = "$shortSha,latest"
+          Write-Host "Tagging with: $tags"
+        } else {
+          $tags = $shortSha
+          Write-Host "Tagging with: $tags"
+        }
+        
+        Write-Host "##vso[task.setvariable variable=DOCKER_TAGS]$tags"
+      displayName: 'Determine Docker tags'
+
     - task: Docker@2
+      displayName: 'Build and push Docker image'
       inputs:
         containerRegistry: 'Verix.AzureCR.io'
         repository: 'Verix.ContentTower'
         command: 'buildAndPush'
         Dockerfile: '**/ContentTower/Dockerfile'
+        tags: $(DOCKER_TAGS)
 
     - publish: '$(publishFolder)'
       displayName: 'Publish pipeline artifact'
