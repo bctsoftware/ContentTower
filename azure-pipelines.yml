@@ -1,4 +1,10 @@
-trigger: none
+trigger:
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - v*
 
 variables:
 - name: buildConfiguration
@@ -67,15 +73,23 @@ stages:
         Write-Host "Branch: $branchName"
         Write-Host "Short SHA: $shortSha"
         
+        $tags = @($shortSha)
+        
         if ($branchName -eq "master") {
-          $tags = "$shortSha,latest"
-          Write-Host "Tagging with: $tags"
-        } else {
-          $tags = $shortSha
-          Write-Host "Tagging with: $tags"
+          $tags += "latest"
+          Write-Host "Tagging with main branch: latest"
         }
         
-        Write-Host "##vso[task.setvariable variable=DOCKER_TAGS]$tags"
+        # Check for git tags on current commit
+        $gitTag = git describe --exact-match --tags 2>$null
+        if ($LASTEXITCODE -eq 0 -and $gitTag) {
+          $tags += $gitTag
+          Write-Host "Found git tag: $gitTag"
+        }
+        
+        $tagsString = $tags -join ","
+        Write-Host "Final tags: $tagsString"
+        Write-Host "##vso[task.setvariable variable=DOCKER_TAGS]$tagsString"
       displayName: 'Determine Docker tags'
 
     - task: Docker@2
