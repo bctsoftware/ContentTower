@@ -61,7 +61,8 @@ stages:
 
     - powershell: |
         $branchName = "$(Build.SourceBranchName)"
-        $shortSha = "$(Build.SourceVersionShort)"
+        $fullSha = "$(Build.SourceVersion)"
+        $shortSha = $fullSha.Substring(0, 7)
         
         Write-Host "Branch: $branchName"
         Write-Host "Short SHA: $shortSha"
