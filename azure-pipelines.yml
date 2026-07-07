@@ -81,15 +81,20 @@ stages:
         }
         
         # Check for git tags on current commit
-        $gitTag = git describe --exact-match --tags 2>$null
-        if ($LASTEXITCODE -eq 0 -and $gitTag) {
+        $gitTag = git describe --exact-match --tags 2>&1
+        $gitExitCode = $LASTEXITCODE
+        if ($gitExitCode -eq 0) {
           $tags += $gitTag
           Write-Host "Found git tag: $gitTag"
+        } else {
+          Write-Host "No git tag found"
         }
         
         $tagsString = $tags -join ","
         Write-Host "Final tags: $tagsString"
         Write-Host "##vso[task.setvariable variable=DOCKER_TAGS]$tagsString"
+        Write-Host "Done"
+        exit 0
       displayName: 'Determine Docker tags'
 
     - task: Docker@2
