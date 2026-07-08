@@ -182,6 +182,7 @@ stages:
     environment:
       name: 'Acceptance'
       resourceType: VirtualMachine
+      tags: "internal"
 
     strategy:
       runOnce:
@@ -238,6 +239,7 @@ stages:
     environment:
       name: 'Production'
       resourceType: VirtualMachine
+      tags: "internal"
 
     strategy:
       runOnce:
