@@ -6,9 +6,18 @@ trigger:
     include:
       - v*
 
+resources:
+  repositories:
+    - repository: pipelineTemplates
+      type: git
+      name: Verix/DevOps.PipelineTemplates
+      ref: refs/heads/main
+
 variables:
 - name: buildConfiguration
   value: 'Release'
+- name: DotNetSdkVersion
+  value: '10.0.x'
 - name: projectPath
   value: 'ContentTower/ContentTower.csproj'
 - name: artifactName
@@ -17,6 +26,23 @@ variables:
   value: '$(Build.ArtifactStagingDirectory)/publish'
 
 stages:
+- stage: BuildContainer
+  displayName: Build container
+  dependsOn: []
+  jobs:
+    - job: Build
+      displayName: Build and push container
+      pool:
+        vmImage: ubuntu-latest
+      
+      steps:
+        - template: templates/docker-build-push.yml@pipelineTemplates
+          parameters:
+            dotNetSdkVersion: $(DotNetSdkVersion)
+            buildConfiguration: $(buildConfiguration)
+            projectPath: $(projectPath)
+            targetDockerimage: "verix.contenttower"
+
 - stage: Build
   displayName: 'Build and publish'
   jobs:
@@ -64,47 +90,6 @@ stages:
         arguments: '--configuration $(buildConfiguration) --output $(publishFolder) --no-build'
         zipAfterPublish: true
         modifyOutputPath: false
-
-    - powershell: |
-        $branchName = "$(Build.SourceBranchName)"
-        $fullSha = "$(Build.SourceVersion)"
-        $shortSha = $fullSha.Substring(0, 7)
-        
-        Write-Host "Branch: $branchName"
-        Write-Host "Short SHA: $shortSha"
-        
-        $tags = @($shortSha)
-        
-        if ($branchName -eq "master") {
-          $tags += "latest"
-          Write-Host "Tagging with main branch: latest"
-        }
-        
-        # Check for git tags on current commit
-        $gitTag = git describe --exact-match --tags 2>&1
-        $gitExitCode = $LASTEXITCODE
-        if ($gitExitCode -eq 0) {
-          $tags += $gitTag
-          Write-Host "Found git tag: $gitTag"
-        } else {
-          Write-Host "No git tag found"
-        }
-        
-        $tagsString = $tags -join ","
-        Write-Host "Final tags: $tagsString"
-        Write-Host "##vso[task.setvariable variable=DOCKER_TAGS]$tagsString"
-        Write-Host "Done"
-        exit 0
-      displayName: 'Determine Docker tags'
-
-    - task: Docker@2
-      displayName: 'Build and push Docker image'
-      inputs:
-        containerRegistry: 'Verix.AzureCR.io'
-        repository: 'Verix.ContentTower'
-        command: 'buildAndPush'
-        Dockerfile: '**/ContentTower/Dockerfile'
-        tags: $(DOCKER_TAGS)
 
     - publish: '$(publishFolder)'
       displayName: 'Publish pipeline artifact'
