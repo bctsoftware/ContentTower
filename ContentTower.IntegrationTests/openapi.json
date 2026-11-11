@@ -477,6 +477,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "expiresUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -550,6 +557,13 @@
             "type": "string",
             "format": "date-time"
           },
+          "expiresUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
           "cids": {
             "type": "array",
             "items": {
@@ -617,6 +631,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "expiresUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

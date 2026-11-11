@@ -183,6 +183,33 @@ public class PinCleanupWorkerTests
         await Task.CompletedTask;
     }
 
+    [Test]
+    public async Task Step_WithPassedExpiresUtc_DeletesPinEvenIfPermanent()
+    {
+        var pinId = MakePinId();
+        var pin = MakePin(pinId, StoreType.Permanent, FreshStart, FreshStart);
+        pin.ExpiresUtc = FixedNow - TimeSpan.FromMinutes(1);
+        SetupPins(pin);
+
+        CreateWorker().Step(CancellationToken.None);
+
+        mockPinService.Verify(ps => ps.Delete(pinId), Times.Once);
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Step_WithFutureExpiresUtc_DoesNotDeletePinEvenIfStoreTypeExpired()
+    {
+        var pin = MakePin(MakePinId(), StoreType.Default, ExpiredStart, ExpiredStart);
+        pin.ExpiresUtc = FixedNow + TimeSpan.FromMinutes(1);
+        SetupPins(pin);
+
+        CreateWorker().Step(CancellationToken.None);
+
+        mockPinService.Verify(ps => ps.Delete(It.IsAny<PinId>()), Times.Never);
+        await Task.CompletedTask;
+    }
+
     #endregion
 }
 

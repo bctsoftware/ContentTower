@@ -13,6 +13,7 @@ namespace ContentTower.Services
         void RegisterActivity(Cid cid);
         PinData Get(PinId pinId);
         void Delete(PinId pinId);
+        void SetExpiry(PinId pinId, DateTime expiresUtc);
     }
 
     public class PinService : IPinService
@@ -108,6 +109,16 @@ namespace ContentTower.Services
             presenceService.ClearPresence(pinId);
             objectStoreService.DeleteObject(pinId);
             logger.LogInformation("Deleted pin {0} from {1} contents.", pinId, pin.Cids.Count);
+        }
+
+        public void SetExpiry(PinId pinId, DateTime expiresUtc)
+        {
+            if (!Exists(pinId)) throw new BadHttpRequestException($"Pin {pinId} does not exist.");
+            objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
+            {
+                pin.ExpiresUtc = expiresUtc;
+            });
+            logger.LogInformation("Pin {0} expires at {1:O}", pinId, expiresUtc);
         }
 
         private PinId CreateNewPin(StoreType type, Cid[] cids)
