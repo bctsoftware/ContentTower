@@ -302,6 +302,49 @@
         }
       }
     },
+    "/Pin/{pinId}/expiry": {
+      "patch": {
+        "tags": [
+          "Pin"
+        ],
+        "description": "Sets or moves the end date of a pin. Only allowed for pins with StoreType 'Permanent'.",
+        "parameters": [
+          {
+            "name": "pinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPinExpiryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPinExpiryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPinExpiryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/Pin/{pinId}/force": {
       "delete": {
         "tags": [
@@ -477,6 +520,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "expiresUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -550,6 +600,13 @@
             "type": "string",
             "format": "date-time"
           },
+          "expiresUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
           "cids": {
             "type": "array",
             "items": {
@@ -588,6 +645,15 @@
           "Pressure",
           "Full"
         ]
+      },
+      "SetPinExpiryRequest": {
+        "type": "object",
+        "properties": {
+          "expiresUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "StoreType": {
         "enum": [

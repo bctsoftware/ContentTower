@@ -21,7 +21,11 @@ namespace ContentTower.Controllers
         public CreatePinResponse Create([FromBody] CreatePinRequest createPinRequest)
         {
             var cids = Map(createPinRequest.Cids);
+            var expiresUtc = createPinRequest.ExpiresUtc;
+            if (expiresUtc != null && createPinRequest.StoreType != StoreType.Permanent) throw new BadHttpRequestException("ExpiresUtc is only allowed for pins with StoreType 'Permanent'.");
+
             var pinId = pinService.Create(createPinRequest.StoreType, cids);
+            if (expiresUtc != null) pinService.SetExpiry(pinId, expiresUtc.Value.ToUniversalTime());
             return new CreatePinResponse { PinId = pinId.Id };
         }
 
@@ -37,6 +41,15 @@ namespace ContentTower.Controllers
 
             pinService.Attach(pinId, toAdd);
             pinService.Detach(pinId, toRemove);
+        }
+
+        [HttpPatch]
+        [Route("{pinId}/expiry")]
+        [EndpointDescription("Sets or moves the end date of a pin. Only allowed for pins with StoreType 'Permanent'.")]
+        public void SetExpiry([FromRoute] string pinId, [FromBody] SetPinExpiryRequest request)
+        {
+            if (!IsValidPinId(pinId)) throw new BadHttpRequestException($"Invalid PinId: '{pinId}'.");
+            pinService.SetExpiry(new PinId(pinId), request.ExpiresUtc.ToUniversalTime());
         }
 
         [HttpGet]
@@ -88,6 +101,7 @@ namespace ContentTower.Controllers
                 StoreType = pinData.StoreType,
                 CreateUtc = pinData.CreateUtc,
                 LastActivityUtc = pinData.LastActivityUtc,
+                ExpiresUtc = pinData.ExpiresUtc,
                 Cids = pinData.Cids.Select(c => c.Id).ToArray()
             };
         }
@@ -120,6 +134,7 @@ namespace ContentTower.Controllers
     {
         public StoreType StoreType { get; set; }
         public string[] Cids { get; set; } = Array.Empty<string>();
+        public DateTime? ExpiresUtc { get; set; }
     }
 
     public class CreatePinResponse
@@ -134,12 +149,18 @@ namespace ContentTower.Controllers
         public string[] RemoveCids { get; set; } = Array.Empty<string>();
     }
 
+    public class SetPinExpiryRequest
+    {
+        public DateTime ExpiresUtc { get; set; }
+    }
+
     public class PinView
     {
         public string PinId { get; set; } = string.Empty;
         public StoreType StoreType { get; set; }
         public DateTime CreateUtc { get; set; }
         public DateTime LastActivityUtc { get; set; }
+        public DateTime? ExpiresUtc { get; set; }
         public string[] Cids { get; set; } = Array.Empty<string>();
     }
 }
