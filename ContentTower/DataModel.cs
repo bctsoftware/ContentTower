@@ -94,7 +94,7 @@ namespace ContentTower
         public StoreType StoreType { get; set; }
         public DateTime CreateUtc { get; set; } = DateTime.MinValue;
         public DateTime LastActivityUtc { get; set; } = DateTime.MinValue;
-        // Explicit end date. When set, it overrides the StoreType-based expiry (including Permanent and quota pressure).
+        // Explicit end date. Only used for Permanent pins: the pin is removed once this moment has passed.
         public DateTime? ExpiresUtc { get; set; }
 
         public bool Valid()

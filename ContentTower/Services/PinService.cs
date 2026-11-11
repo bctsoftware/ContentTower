@@ -114,6 +114,7 @@ namespace ContentTower.Services
         public void SetExpiry(PinId pinId, DateTime expiresUtc)
         {
             if (!Exists(pinId)) throw new BadHttpRequestException($"Pin {pinId} does not exist.");
+            if (Get(pinId).StoreType != StoreType.Permanent) throw new BadHttpRequestException("ExpiresUtc is only allowed for pins with StoreType 'Permanent'.");
             objectStoreService.CreateOrUpdateObject<PinData>(pinId, pin =>
             {
                 pin.ExpiresUtc = expiresUtc;

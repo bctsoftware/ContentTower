@@ -21,13 +21,16 @@ namespace ContentTower.Controllers
         public CreatePinResponse Create([FromBody] CreatePinRequest createPinRequest)
         {
             var cids = Map(createPinRequest.Cids);
+            var expiresUtc = createPinRequest.ExpiresUtc;
+            if (expiresUtc != null && createPinRequest.StoreType != StoreType.Permanent) throw new BadHttpRequestException("ExpiresUtc is only allowed for pins with StoreType 'Permanent'.");
+
             var pinId = pinService.Create(createPinRequest.StoreType, cids);
-            SetExpiry(pinId, createPinRequest.ExpiresUtc);
+            if (expiresUtc != null) pinService.SetExpiry(pinId, expiresUtc.Value.ToUniversalTime());
             return new CreatePinResponse { PinId = pinId.Id };
         }
 
         [HttpPatch]
-        [EndpointDescription("Attached content to or detaches content from the specified pin. Sets or moves the pin's end date if ExpiresUtc is provided.")]
+        [EndpointDescription("Attached content to or detaches content from the specified pin.")]
         public void Update([FromBody] UpdatePinRequest updatePinRequest)
         {
             if (!IsValidPinId(updatePinRequest.PinId)) throw new BadHttpRequestException($"Invalid PinId: '{updatePinRequest.PinId}'.");
@@ -38,12 +41,15 @@ namespace ContentTower.Controllers
 
             pinService.Attach(pinId, toAdd);
             pinService.Detach(pinId, toRemove);
-            SetExpiry(pinId, updatePinRequest.ExpiresUtc);
         }
 
-        private void SetExpiry(PinId pinId, DateTime? expiresUtc)
+        [HttpPatch]
+        [Route("{pinId}/expiry")]
+        [EndpointDescription("Sets or moves the end date of a pin. Only allowed for pins with StoreType 'Permanent'.")]
+        public void SetExpiry([FromRoute] string pinId, [FromBody] SetPinExpiryRequest request)
         {
-            if (expiresUtc != null) pinService.SetExpiry(pinId, expiresUtc.Value.ToUniversalTime());
+            if (!IsValidPinId(pinId)) throw new BadHttpRequestException($"Invalid PinId: '{pinId}'.");
+            pinService.SetExpiry(new PinId(pinId), request.ExpiresUtc.ToUniversalTime());
         }
 
         [HttpGet]
@@ -141,7 +147,11 @@ namespace ContentTower.Controllers
         public string PinId { get; set; } = string.Empty;
         public string[] AddCids { get; set; } = Array.Empty<string>();
         public string[] RemoveCids { get; set; } = Array.Empty<string>();
-        public DateTime? ExpiresUtc { get; set; }
+    }
+
+    public class SetPinExpiryRequest
+    {
+        public DateTime ExpiresUtc { get; set; }
     }
 
     public class PinView

@@ -19,7 +19,7 @@ ContentTower allows you to store content in one of three modes:
 - `Permanent` - ContentTower will not delete this content, nor will it allow the normal delete operation to remove this content.
 
 ### Explicit end date
-A pin of any store type can be given an explicit end date by passing `ExpiresUtc` when creating (`POST /Pin`) or updating (`PATCH /Pin`) it. Once set, the pin is removed after that moment, regardless of its store type and regardless of quota pressure. Send a new `ExpiresUtc` to move the date.
+A `Permanent` pin can be given an explicit end date: pass `ExpiresUtc` when creating it (`POST /Pin`), or set it later with `PATCH /Pin/{pinId}/expiry`. Once set, the pin is removed after that moment, regardless of quota pressure. Call the endpoint again to move the date. Pins of other store types cannot have an end date.
 
 ## Configuration
 The following aspects of ContentTower can be easily configured. You can use the standard dotnet appsettings approach, or environment variables.

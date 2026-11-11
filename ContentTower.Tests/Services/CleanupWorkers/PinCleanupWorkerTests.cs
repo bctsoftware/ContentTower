@@ -198,15 +198,29 @@ public class PinCleanupWorkerTests
     }
 
     [Test]
-    public async Task Step_WithFutureExpiresUtc_DoesNotDeletePinEvenIfStoreTypeExpired()
+    public async Task Step_WithFutureExpiresUtc_DoesNotDeletePermanentPin()
     {
-        var pin = MakePin(MakePinId(), StoreType.Default, ExpiredStart, ExpiredStart);
+        var pin = MakePin(MakePinId(), StoreType.Permanent, ExpiredStart, ExpiredStart);
         pin.ExpiresUtc = FixedNow + TimeSpan.FromMinutes(1);
         SetupPins(pin);
 
         CreateWorker().Step(CancellationToken.None);
 
         mockPinService.Verify(ps => ps.Delete(It.IsAny<PinId>()), Times.Never);
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Step_NonPermanentPin_IgnoresExpiresUtc()
+    {
+        var pinId = MakePinId();
+        var pin = MakePin(pinId, StoreType.Default, ExpiredStart, ExpiredStart);
+        pin.ExpiresUtc = FixedNow + TimeSpan.FromMinutes(1);
+        SetupPins(pin);
+
+        CreateWorker().Step(CancellationToken.None);
+
+        mockPinService.Verify(ps => ps.Delete(pinId), Times.Once);
         await Task.CompletedTask;
     }
 
