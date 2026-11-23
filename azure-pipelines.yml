@@ -1,7 +1,7 @@
 trigger:
   branches:
     include:
-      - master
+      - main
   tags:
     include:
       - v*
@@ -140,6 +140,22 @@ stages:
               PipeLineModeForWebsite: 'Integrated'
               AppPoolIdentityForWebsite: 'ApplicationPoolIdentity'
 
+          - powershell: |
+              $path = $env:DATA_PATH
+              if ([string]::IsNullOrWhiteSpace($path) -or $path -match '^\$\(') {
+                throw "Pipeline variable 'Storage.DataPath' is empty or not set in the variable group for this stage."
+              }
+              $identity = "IIS AppPool\$env:APP_POOL"
+              New-Item -ItemType Directory -Path $path -Force | Out-Null
+              icacls "$path" /grant "${identity}:(OI)(CI)M" /C /Q
+              if ($LASTEXITCODE -ne 0) { throw "icacls failed with exit code $LASTEXITCODE on '$path' for '$identity'." }
+              Write-Host "Granted Modify (OI)(CI) on '$path' to '$identity'."
+            displayName: 'Grant app pool rights on data folder'
+            errorActionPreference: stop
+            env:
+              DATA_PATH: $(Storage.DataPath)
+              APP_POOL: $(iisAppPoolName)
+
           - task: IISWebAppDeploymentOnMachineGroup@0
             displayName: 'Deploy files to IIS'
             inputs:
@@ -197,6 +213,22 @@ stages:
               PipeLineModeForWebsite: 'Integrated'
               AppPoolIdentityForWebsite: 'ApplicationPoolIdentity'
 
+          - powershell: |
+              $path = $env:DATA_PATH
+              if ([string]::IsNullOrWhiteSpace($path) -or $path -match '^\$\(') {
+                throw "Pipeline variable 'Storage.DataPath' is empty or not set in the variable group for this stage."
+              }
+              $identity = "IIS AppPool\$env:APP_POOL"
+              New-Item -ItemType Directory -Path $path -Force | Out-Null
+              icacls "$path" /grant "${identity}:(OI)(CI)M" /C /Q
+              if ($LASTEXITCODE -ne 0) { throw "icacls failed with exit code $LASTEXITCODE on '$path' for '$identity'." }
+              Write-Host "Granted Modify (OI)(CI) on '$path' to '$identity'."
+            displayName: 'Grant app pool rights on data folder'
+            errorActionPreference: stop
+            env:
+              DATA_PATH: $(Storage.DataPath)
+              APP_POOL: $(iisAppPoolName)
+
           - task: IISWebAppDeploymentOnMachineGroup@0
             displayName: 'Deploy files to IIS'
             inputs:
@@ -253,6 +285,22 @@ stages:
               DotNetVersionForWebsite: 'No Managed Code'
               PipeLineModeForWebsite: 'Integrated'
               AppPoolIdentityForWebsite: 'ApplicationPoolIdentity'
+
+          - powershell: |
+              $path = $env:DATA_PATH
+              if ([string]::IsNullOrWhiteSpace($path) -or $path -match '^\$\(') {
+                throw "Pipeline variable 'Storage.DataPath' is empty or not set in the variable group for this stage."
+              }
+              $identity = "IIS AppPool\$env:APP_POOL"
+              New-Item -ItemType Directory -Path $path -Force | Out-Null
+              icacls "$path" /grant "${identity}:(OI)(CI)M" /C /Q
+              if ($LASTEXITCODE -ne 0) { throw "icacls failed with exit code $LASTEXITCODE on '$path' for '$identity'." }
+              Write-Host "Granted Modify (OI)(CI) on '$path' to '$identity'."
+            displayName: 'Grant app pool rights on data folder'
+            errorActionPreference: stop
+            env:
+              DATA_PATH: $(Storage.DataPath)
+              APP_POOL: $(iisAppPoolName)
 
           - task: IISWebAppDeploymentOnMachineGroup@0
             displayName: 'Deploy files to IIS'

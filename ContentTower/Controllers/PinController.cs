@@ -108,6 +108,8 @@ namespace ContentTower.Controllers
 
         private void DeleteInternal(PinId pinId, bool force)
         {
+            // Pins expire on their own, so a caller may delete one that is already gone: that is the state it asked for.
+            if (!pinService.Exists(pinId)) return;
             var pin = pinService.Get(pinId);
             if (pin.StoreType == StoreType.Permanent && !force) throw new BadHttpRequestException("Cannot delete permanent pin.");
             pinService.Delete(pinId);
