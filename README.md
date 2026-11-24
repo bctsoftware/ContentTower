@@ -18,6 +18,9 @@ ContentTower allows you to store content in one of three modes:
 - `Temporary` - Content is stored for a short duration after last activity. Upload and download activity resets this timer.
 - `Permanent` - ContentTower will not delete this content, nor will it allow the normal delete operation to remove this content.
 
+### Explicit end date
+A `Permanent` pin can be given an explicit end date: pass `ExpiresUtc` when creating it (`POST /Pin`), or set it later with `PATCH /Pin/{pinId}/expiry`. Once set, the pin is removed after that moment, regardless of quota pressure. Call the endpoint again to move the date. Pins of other store types cannot have an end date.
+
 ## Configuration
 The following aspects of ContentTower can be easily configured. You can use the standard dotnet appsettings approach, or environment variables.
 | Name | Description | Example |

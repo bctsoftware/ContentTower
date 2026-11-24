@@ -37,11 +37,12 @@ namespace ContentTower.Services.CleanupWorkers
 
         private void DeleteIfExpired(PinData pin)
         {
-            if (pin.StoreType == StoreType.Permanent) return;
+            // Permanent pins only expire on their explicit end date, which is not shortened by quota pressure.
+            if (pin.StoreType == StoreType.Permanent && pin.ExpiresUtc == null) return;
 
-            var span = timespanSelector.Get(pin.StoreType);
-            var startUtc = GetPinStartUtc(pin);
-            var expiryUtc = startUtc + span;
+            var expiryUtc = pin.StoreType == StoreType.Permanent
+                ? pin.ExpiresUtc!.Value
+                : GetPinStartUtc(pin) + timespanSelector.Get(pin.StoreType);
 
             if (timeService.UtcNow() > expiryUtc)
             {
