@@ -28,6 +28,7 @@ namespace ContentTower
             }
             app.UseAuthorization();
             app.MapControllers();
+            app.MapHealthChecks("/health"); // Liveness endpoint for monitoring
             app.Run();
         }
 
@@ -58,6 +59,7 @@ namespace ContentTower
             builder.Services.AddSingleton<IValidationService, ValidationService>();
             // WebAPI:
             builder.Services.AddControllers();
+            builder.Services.AddHealthChecks();
             builder.Services.AddEndpointsApiExplorer(); // Required for OpenAPI generation
             builder.Services.AddOpenApi();
             builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
